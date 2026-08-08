@@ -1,0 +1,96 @@
+root = true
+
+# ==========================================
+
+# General
+
+# ==========================================
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# ==========================================
+
+# C#
+
+# ==========================================
+
+[*.cs]
+indent_size = 4
+
+# Usings
+
+dotnet_sort_system_directives_first = true
+
+# New lines
+
+csharp_new_line_before_members_in_chained_calls = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_new_line_before_members_in_object_initializers = true
+
+# Braces
+
+csharp_new_line_before_open_brace = all
+
+# Naming
+
+dotnet_naming_rule.interfaces_should_be_prefixed_with_i.severity = suggestion
+dotnet_naming_rule.interfaces_should_be_prefixed_with_i.symbols = interface
+dotnet_naming_rule.interfaces_should_be_prefixed_with_i.style = interface_prefix
+
+dotnet_naming_symbols.interface.applicable_kinds = interface
+dotnet_naming_symbols.interface.applicable_accessibilities = public, internal, private, protected
+
+dotnet_naming_style.interface_prefix.required_prefix = I
+dotnet_naming_style.interface_prefix.capitalization = pascal_case
+
+# ==========================================
+
+# JSON
+
+# ==========================================
+
+[*.json]
+indent_size = 2
+
+# ==========================================
+
+# JavaScript / TypeScript
+
+# ==========================================
+
+[*.{js,jsx,ts,tsx}]
+indent_size = 2
+
+# ==========================================
+
+# CSS / SCSS
+
+# ==========================================
+
+[*.{css,scss}]
+indent_size = 2
+
+# ==========================================
+
+# HTML
+
+# ==========================================
+
+[*.html]
+indent_size = 2
+
+# ==========================================
+
+# Markdown
+
+# ==========================================
+
+[*.md]
+trim_trailing_whitespace = false
+indent_size = 2

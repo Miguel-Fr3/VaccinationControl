@@ -1,0 +1,6 @@
+@VaccinationControl.Api_HostAddress = http://localhost:5201
+
+GET {{VaccinationControl.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

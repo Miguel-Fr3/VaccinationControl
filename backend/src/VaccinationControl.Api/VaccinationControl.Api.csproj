@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <!-- Pin direto: Microsoft.AspNetCore.OpenApi 10.0.10 traz Microsoft.OpenApi 2.0.0,
+         vulnerável (GHSA-v5pm-xwqc-g5wc, corrigido em 2.7.5). -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VaccinationControl.Application\VaccinationControl.Application.csproj" />
+    <ProjectReference Include="..\VaccinationControl.Infrastructure\VaccinationControl.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

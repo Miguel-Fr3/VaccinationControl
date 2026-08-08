@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VaccinationControl.Api/VaccinationControl.Api.csproj" />
+    <Project Path="src/VaccinationControl.Application/VaccinationControl.Application.csproj" />
+    <Project Path="src/VaccinationControl.Domain/VaccinationControl.Domain.csproj" />
+    <Project Path="src/VaccinationControl.Infrastructure/VaccinationControl.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VaccinationControl.IntegrationTests/VaccinationControl.IntegrationTests.csproj" />
+    <Project Path="tests/VaccinationControl.UnitTests/VaccinationControl.UnitTests.csproj" />
+  </Folder>
+</Solution>
