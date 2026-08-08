@@ -8,6 +8,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <!-- Pin direto: Microsoft.AspNetCore.OpenApi 10.0.10 traz Microsoft.OpenApi 2.0.0,
          vulnerável (GHSA-v5pm-xwqc-g5wc, corrigido em 2.7.5). -->
     <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />

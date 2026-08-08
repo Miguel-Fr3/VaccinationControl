@@ -1,0 +1,48 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using VaccinationControl.Infrastructure.Persistence;
+
+namespace VaccinationControl.Infrastructure
+{
+    public static class DependencyInjection
+    {
+        public static IServiceCollection AddInfrastructure(
+            this IServiceCollection services,
+            IConfiguration configuration,
+            string contentRootPath)
+        {
+            var connectionString = ResolveDataSource(
+                configuration.GetConnectionString("DefaultConnection"),
+                contentRootPath);
+
+            services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+
+            return services;
+        }
+
+        /// <summary>
+        /// O SQLite resolve um Data Source relativo contra o diretório de trabalho do processo,
+        /// que muda conforme a aplicação seja iniciada por <c>dotnet run</c>, pelo executável em
+        /// <c>bin/</c> ou pelas ferramentas do EF. Ancorar no content root garante um único banco.
+        /// </summary>
+        private static string ResolveDataSource(string? connectionString, string contentRootPath)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException(
+                    "A connection string 'DefaultConnection' não foi configurada.");
+            }
+
+            var builder = new SqliteConnectionStringBuilder(connectionString);
+
+            if (!Path.IsPathRooted(builder.DataSource))
+            {
+                builder.DataSource = Path.Combine(contentRootPath, builder.DataSource);
+            }
+
+            return builder.ConnectionString;
+        }
+    }
+}
