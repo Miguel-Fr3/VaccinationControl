@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <!-- 7.2.2 é a última versão sob licença Apache-2.0; a partir da 8.x o FluentAssertions
+         passou para a licença Xceed, gratuita apenas para uso não comercial. -->
+    <PackageReference Include="FluentAssertions" Version="7.2.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
@@ -16,6 +19,11 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VaccinationControl.Application\VaccinationControl.Application.csproj" />
+    <ProjectReference Include="..\..\src\VaccinationControl.Domain\VaccinationControl.Domain.csproj" />
   </ItemGroup>
 
 </Project>
