@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
+
+jobs:
+  backend:
+    name: Backend - Build e Testes
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configura o .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # A chave usa os .csproj porque nao ha lock file: qualquer mudanca de
+      # PackageReference invalida o cache e forca um restore limpo.
+      - name: Cache dos pacotes NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('backend/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restaura as dependencias
+        run: dotnet restore
+
+      # -warnaserror: o projeto esta em zero avisos e a pipeline mantem assim.
+      # Se um pacote novo introduzir aviso, o build quebra de proposito.
+      - name: Compila
+        run: dotnet build --no-restore --configuration Release -warnaserror
+
+      - name: Executa os testes
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+# O job do frontend sera adicionado quando frontend/ tiver um package.json.
+# Hoje a pasta esta vazia e um npm ci falharia, deixando a pipeline vermelha
+# sem que exista nada de errado no projeto.
