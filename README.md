@@ -2,9 +2,10 @@
 
 Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vacinas, aplicações e histórico de vacinação.
 
-> **Estado atual:** backend em desenvolvimento. O cadastro e a consulta de vacinas estão
-> funcionando de ponta a ponta. Pessoas, cartão de vacinação e autenticação ainda não foram
-> implementados — veja [Status e próximos passos](#status-e-próximos-passos).
+> **Estado atual:** backend em desenvolvimento. Os cadastros de vacinas e de pessoas estão
+> funcionando de ponta a ponta, incluindo a remoção de pessoa com exclusão em cascata do
+> cartão. O registro de vacinação e a autenticação ainda não foram implementados — veja
+> [Status e próximos passos](#status-e-próximos-passos).
 
 ## Tecnologias
 
@@ -45,7 +46,7 @@ Ainda não iniciado. A pasta `frontend/` existe, mas está vazia.
 | Pipeline de validação (MediatR + FluentValidation) | Concluída |
 | Tratamento global de exceções | Concluída |
 | Cadastro e consulta de vacinas | Concluída |
-| Cadastro e remoção de pessoas | Planejada |
+| Cadastro e remoção de pessoas | Concluída |
 | Registro de vacinação com validação de dose | Planejada |
 | Consulta e exclusão do cartão de vacinação | Planejada |
 | Autenticação JWT | Planejada |
@@ -98,8 +99,8 @@ Api ──> Application ──> Domain
 
 As setas apontam sempre para dentro. O Domain não referencia nada — nem pacote NuGet. A
 Application não conhece Entity Framework nem qualquer tipo da Infrastructure: ela **declara**
-as interfaces de persistência (`IVaccineRepository`, `IUnitOfWork`) e a Infrastructure as
-implementa.
+as interfaces de persistência (`IVaccineRepository`, `IPersonRepository`, `IUnitOfWork`) e a
+Infrastructure as implementa.
 
 Na prática isso significa que trocar SQLite por outro banco, ou o MediatR por outro mediador,
 não toca em nenhuma regra de negócio.
@@ -184,10 +185,10 @@ Documentação interativa disponível em desenvolvimento:
 | Scalar (UI) | `http://localhost:5201/scalar/v1` |
 | Documento OpenAPI | `http://localhost:5201/openapi/v1.json` |
 
-### Endpoints disponíveis
+Os recursos de vacinas e pessoas estão implementados. O registro de vacinação, a consulta do
+cartão e a autenticação constam do plano e ainda não existem.
 
-Apenas o recurso de vacinas está implementado. Pessoas, cartão de vacinação e autenticação
-constam do plano e ainda não existem.
+### Vacinas
 
 #### `POST /api/vaccines`
 
@@ -257,10 +258,57 @@ A resposta usa sempre o mesmo envelope, com ou sem paginação. Quando não há 
 | 200 | Consulta realizada |
 | 400 | `page` menor que 1, `pageSize` fora de 1–100 ou `search` acima de 200 caracteres |
 
+### Pessoas
+
+#### `POST /api/people`
+
+Cadastra uma pessoa. O documento é o número de identificação único — CPF, RG ou matrícula;
+o formato não é imposto.
+
+```json
+{ "name": "Maria Silva", "document": "12345678901" }
+```
+
+| HTTP | Quando |
+| --- | --- |
+| 201 | Pessoa cadastrada; `Location` aponta para o recurso |
+| 400 | Nome ou documento vazios, ou acima do tamanho permitido |
+| 409 | Já existe pessoa com esse documento |
+
+```json
+{
+  "id": "94549402-7498-483b-b31a-da2c40d471ce",
+  "name": "Maria Silva",
+  "document": "12345678901"
+}
+```
+
+#### `GET /api/people/{id}`
+
+Consulta uma pessoa pelo identificador. É o endereço devolvido no `Location` do cadastro.
+
+| HTTP | Quando |
+| --- | --- |
+| 200 | Pessoa encontrada |
+| 400 | Identificador vazio (`00000000-...`) |
+| 404 | Não existe pessoa com esse identificador |
+
+#### `DELETE /api/people/{id}`
+
+Remove a pessoa. **A exclusão é em cascata**: o cartão de vacinação e todos os registros
+associados são apagados junto, pelo `ON DELETE CASCADE` da chave estrangeira. As vacinas do
+catálogo não são afetadas.
+
+| HTTP | Quando |
+| --- | --- |
+| 204 | Pessoa removida; sem corpo na resposta |
+| 400 | Identificador vazio (`00000000-...`) |
+| 404 | Não existe pessoa com esse identificador |
+
 ### Exemplos de chamada
 
 ```bash
-# cadastrar
+# cadastrar uma vacina
 curl -X POST http://localhost:5201/api/vaccines \
   -H "Content-Type: application/json" \
   -d '{"name":"Hepatite B"}'
@@ -279,6 +327,19 @@ curl "http://localhost:5201/api/vaccines?page=2&pageSize=3"
 
 # busca e paginação combinadas
 curl "http://localhost:5201/api/vaccines?search=hepat&pageSize=1"
+```
+
+```bash
+# cadastrar uma pessoa
+curl -X POST http://localhost:5201/api/people \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Maria Silva","document":"12345678901"}'
+
+# consultar pelo id
+curl http://localhost:5201/api/people/94549402-7498-483b-b31a-da2c40d471ce
+
+# remover a pessoa e todo o seu cartão de vacinação
+curl -X DELETE http://localhost:5201/api/people/94549402-7498-483b-b31a-da2c40d471ce
 ```
 
 ---
@@ -316,12 +377,13 @@ Dentro da Application, cada caso de uso tem a própria pasta com command/query, 
 validator juntos:
 
 ```text
-Application/Vaccines/
-├── VaccineResponse.cs
-├── Commands/CreateVaccine/
+Application/People/
+├── PersonResponse.cs
+├── Commands/
+│   ├── CreatePerson/
+│   └── DeletePerson/
 └── Queries/
-    ├── GetVaccineById/
-    └── GetVaccines/
+    └── GetPersonById/
 ```
 
 ---
