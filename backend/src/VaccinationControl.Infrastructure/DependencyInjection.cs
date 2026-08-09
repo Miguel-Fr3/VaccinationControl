@@ -2,7 +2,9 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using VaccinationControl.Application.Common.Interfaces;
 using VaccinationControl.Infrastructure.Persistence;
+using VaccinationControl.Infrastructure.Persistence.Repositories;
 
 namespace VaccinationControl.Infrastructure
 {
@@ -18,6 +20,11 @@ namespace VaccinationControl.Infrastructure
                 contentRootPath);
 
             services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+
+            // Mesma instância do DbContext atende o repositório e o unit of work no escopo.
+            services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AppDbContext>());
+
+            services.AddScoped<IVaccineRepository, VaccineRepository>();
 
             return services;
         }
