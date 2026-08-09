@@ -25,6 +25,7 @@ namespace VaccinationControl.Infrastructure
             services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AppDbContext>());
 
             services.AddScoped<IVaccineRepository, VaccineRepository>();
+            services.AddScoped<IPersonRepository, PersonRepository>();
 
             return services;
         }
