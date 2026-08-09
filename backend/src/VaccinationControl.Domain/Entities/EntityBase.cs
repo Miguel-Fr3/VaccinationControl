@@ -7,13 +7,11 @@ namespace VaccinationControl.Domain.Entities
         public Guid CreatedBy { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public Guid? UpdatedBy { get; set; }
-        public bool IsActive { get; set; }
 
         public EntityBase()
         {
             Id = Guid.NewGuid();
             CreatedAt = DateTime.UtcNow;
-            IsActive = true;
         }
     }
 }

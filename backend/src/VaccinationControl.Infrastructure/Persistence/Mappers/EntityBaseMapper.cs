@@ -22,9 +22,6 @@ namespace VaccinationControl.Infrastructure.Persistence.Mappers
             builder.Property(entity => entity.CreatedAt)
                 .IsRequired();
 
-            builder.Property(entity => entity.IsActive)
-                .IsRequired();
-
             MapEntity(builder);
         }
 
