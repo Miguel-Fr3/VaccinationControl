@@ -29,5 +29,7 @@ namespace VaccinationControl.Application.Common.Interfaces
             CancellationToken cancellationToken = default);
 
         void Add(VaccinationRecord vaccinationRecord);
+
+        void Remove(VaccinationRecord vaccinationRecord);
     }
 }

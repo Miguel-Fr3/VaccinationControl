@@ -2,10 +2,9 @@
 
 Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vacinas, aplicações e histórico de vacinação.
 
-> **Estado atual:** backend em desenvolvimento. Cadastro de vacinas, cadastro e remoção de
-> pessoas, registro de vacinação com validação de dose e consulta do cartão estão
-> funcionando de ponta a ponta. A exclusão de um registro específico e a autenticação ainda
-> não foram implementadas — veja [Status e próximos passos](#status-e-próximos-passos).
+> **Estado atual:** as seis funcionalidades planejadas estão implementadas e funcionando de
+> ponta a ponta. Faltam a autenticação da API e os testes automatizados — veja
+> [Status e próximos passos](#status-e-próximos-passos).
 
 ## Tecnologias
 
@@ -49,7 +48,7 @@ Ainda não iniciado. A pasta `frontend/` existe, mas está vazia.
 | Cadastro e remoção de pessoas | Concluída |
 | Registro de vacinação com validação de dose | Concluída |
 | Consulta do cartão de vacinação | Concluída |
-| Exclusão de registro do cartão | Planejada |
+| Exclusão de registro do cartão | Concluída |
 | Autenticação JWT | Planejada |
 | Testes unitários e de integração | Planejada |
 | Frontend em React | Planejada |
@@ -397,6 +396,32 @@ O registro precisa pertencer à pessoa da rota: consultar um registro válido so
 | 400 | Identificador vazio (`00000000-...`) |
 | 404 | Registro inexistente ou pertencente a outra pessoa |
 
+#### `DELETE /api/people/{personId}/vaccinations/{recordId}`
+
+Remove um registro específico do cartão. O `recordId` vem da consulta do cartão.
+
+| HTTP | Quando |
+| --- | --- |
+| 204 | Registro removido; sem corpo na resposta |
+| 400 | Identificador vazio (`00000000-...`) |
+| 404 | Registro inexistente ou pertencente a outra pessoa |
+
+**A remoção é livre**: qualquer dose pode sair, inclusive do meio da sequência. Não há regra
+de ordem — o endpoint é uma ferramenta de correção de lançamentos.
+
+Isso permite que o cartão fique temporariamente com um buraco (dose 2 sem a dose 1) ou com
+reforços sem dose inicial. Nenhum desses estados fica sem volta, porque as regras de registro
+exigem apenas a dose imediatamente anterior:
+
+| Estado após a remoção | Recriar a dose removida |
+| --- | --- |
+| Removida a dose 1, restam 2 e 3 | Permitido — a dose 1 não exige antecessora |
+| Removida a dose 2, restam 1 e 3 | Permitido — a dose 1 existe, que é o que a RN06 pede |
+| Removidas todas as normais, restam reforços | Permitido — dose normal 1 não exige nada |
+
+As regras RN01 a RN08 descrevem o que pode ser **acrescentado** ao cartão, não um invariante
+permanente dele.
+
 ### Cartão de vacinação
 
 #### `GET /api/people/{personId}/vaccination-card`
@@ -530,6 +555,9 @@ curl "http://localhost:5201/api/people/$PESSOA/vaccinations/290c5a34-570e-46af-9
 
 # consultar o cartão completo, agrupado por vacina
 curl "http://localhost:5201/api/people/$PESSOA/vaccination-card"
+
+# remover um registro — na ordem inversa da aplicação
+curl -X DELETE "http://localhost:5201/api/people/$PESSOA/vaccinations/290c5a34-570e-46af-97e5-548ce265ac48"
 ```
 
 ---
@@ -569,7 +597,9 @@ validator juntos:
 ```text
 Application/Vaccinations/
 ├── VaccinationRecordResponse.cs
-├── Commands/RegisterVaccination/      Request + Command + Handler + Validator
+├── Commands/
+│   ├── RegisterVaccination/           Request + Command + Handler + Validator
+│   └── DeleteVaccinationRecord/       Command + Handler + Validator
 └── Queries/
     ├── GetVaccinationRecordById/      Query + Handler + Validator
     └── GetVaccinationCard/            Query + Handler + Validator + 3 DTOs do cartão

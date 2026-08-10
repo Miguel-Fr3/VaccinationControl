@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using VaccinationControl.Application.Vaccinations;
+using VaccinationControl.Application.Vaccinations.Commands.DeleteVaccinationRecord;
 using VaccinationControl.Application.Vaccinations.Commands.RegisterVaccination;
 using VaccinationControl.Application.Vaccinations.Queries.GetVaccinationRecordById;
 
@@ -68,6 +69,28 @@ namespace VaccinationControl.Api.Controllers
             var record = await _sender.Send(query, cancellationToken);
 
             return Ok(record);
+        }
+
+        /// <summary>
+        /// Remove um registro de vacinação do cartão de uma pessoa.
+        /// </summary>
+        /// <param name="personId">Identificador da pessoa.</param>
+        /// <param name="recordId">Identificador do registro de vacinação.</param>
+        /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+        [HttpDelete("{recordId:guid}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Delete(
+            Guid personId,
+            Guid recordId,
+            CancellationToken cancellationToken)
+        {
+            var command = new DeleteVaccinationRecordCommand(personId, recordId);
+
+            await _sender.Send(command, cancellationToken);
+
+            return NoContent();
         }
     }
 }
