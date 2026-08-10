@@ -4,21 +4,14 @@ using VaccinationControl.Domain.Entities;
 
 namespace VaccinationControl.Infrastructure.Persistence.Repositories
 {
-    public class VaccinationRecordRepository : IVaccinationRecordRepository
+    public class VaccinationRecordRepository(AppDbContext context) : IVaccinationRecordRepository
     {
-        private readonly AppDbContext _context;
-
-        public VaccinationRecordRepository(AppDbContext context)
-        {
-            _context = context;
-        }
-
         public async Task<IReadOnlyList<VaccinationRecord>> GetDosesAsync(
             Guid personId,
             Guid vaccineId,
             CancellationToken cancellationToken = default)
         {
-            return await _context.VaccinationRecords
+            return await context.VaccinationRecords
                 .AsNoTracking()
                 .Where(record => record.PersonId == personId && record.VaccineId == vaccineId)
                 .OrderBy(record => record.DoseNumber)
@@ -30,7 +23,7 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
             Guid recordId,
             CancellationToken cancellationToken = default)
         {
-            return _context.VaccinationRecords
+            return context.VaccinationRecords
                 .AsNoTracking()
                 .Include(record => record.Vaccine)
                 .FirstOrDefaultAsync(
@@ -42,7 +35,7 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
             Guid personId,
             CancellationToken cancellationToken = default)
         {
-            return await _context.VaccinationRecords
+            return await context.VaccinationRecords
                 .AsNoTracking()
                 // A vacina vem junto porque o cartão exibe o nome dela em cada grupo.
                 .Include(record => record.Vaccine)
@@ -55,12 +48,12 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
 
         public void Add(VaccinationRecord vaccinationRecord)
         {
-            _context.VaccinationRecords.Add(vaccinationRecord);
+            context.VaccinationRecords.Add(vaccinationRecord);
         }
 
         public void Remove(VaccinationRecord vaccinationRecord)
         {
-            _context.VaccinationRecords.Remove(vaccinationRecord);
+            context.VaccinationRecords.Remove(vaccinationRecord);
         }
     }
 }

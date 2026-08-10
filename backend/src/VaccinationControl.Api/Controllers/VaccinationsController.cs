@@ -10,15 +10,8 @@ namespace VaccinationControl.Api.Controllers
     [ApiController]
     [Route("api/people/{personId:guid}/vaccinations")]
     [Produces("application/json")]
-    public class VaccinationsController : ControllerBase
+    public class VaccinationsController(ISender sender) : ControllerBase
     {
-        private readonly ISender _sender;
-
-        public VaccinationsController(ISender sender)
-        {
-            _sender = sender;
-        }
-
         /// <summary>
         /// Registra uma vacinação no cartão de uma pessoa.
         /// </summary>
@@ -42,7 +35,7 @@ namespace VaccinationControl.Api.Controllers
                 request.DoseNumber,
                 request.VaccinationDate);
 
-            var record = await _sender.Send(command, cancellationToken);
+            var record = await sender.Send(command, cancellationToken);
 
             return CreatedAtAction(
                 nameof(GetById),
@@ -66,7 +59,7 @@ namespace VaccinationControl.Api.Controllers
         {
             var query = new GetVaccinationRecordByIdQuery(personId, recordId);
 
-            var record = await _sender.Send(query, cancellationToken);
+            var record = await sender.Send(query, cancellationToken);
 
             return Ok(record);
         }
@@ -88,7 +81,7 @@ namespace VaccinationControl.Api.Controllers
         {
             var command = new DeleteVaccinationRecordCommand(personId, recordId);
 
-            await _sender.Send(command, cancellationToken);
+            await sender.Send(command, cancellationToken);
 
             return NoContent();
         }

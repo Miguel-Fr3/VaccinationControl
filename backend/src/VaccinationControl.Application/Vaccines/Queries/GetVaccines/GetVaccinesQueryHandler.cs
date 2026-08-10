@@ -4,18 +4,11 @@ using VaccinationControl.Application.Common.Models;
 
 namespace VaccinationControl.Application.Vaccines.Queries.GetVaccines
 {
-    public class GetVaccinesQueryHandler
+    public class GetVaccinesQueryHandler(IVaccineRepository vaccineRepository)
         : IRequestHandler<GetVaccinesQuery, PagedResult<VaccineResponse>>
     {
         private const int DefaultPage = 1;
         private const int DefaultPageSize = 20;
-
-        private readonly IVaccineRepository _vaccineRepository;
-
-        public GetVaccinesQueryHandler(IVaccineRepository vaccineRepository)
-        {
-            _vaccineRepository = vaccineRepository;
-        }
 
         public async Task<PagedResult<VaccineResponse>> Handle(
             GetVaccinesQuery request,
@@ -29,7 +22,7 @@ namespace VaccinationControl.Application.Vaccines.Queries.GetVaccines
             int? skip = isPaginated ? (page - 1) * pageSize : null;
             int? take = isPaginated ? pageSize : null;
 
-            var (vaccines, totalCount) = await _vaccineRepository.SearchAsync(
+            var (vaccines, totalCount) = await vaccineRepository.SearchAsync(
                 request.Search,
                 skip,
                 take,

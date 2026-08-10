@@ -5,29 +5,20 @@ using VaccinationControl.Domain.Exceptions;
 
 namespace VaccinationControl.Application.Vaccinations.Queries.GetVaccinationCard
 {
-    public class GetVaccinationCardQueryHandler
+    public class GetVaccinationCardQueryHandler(
+        IPersonRepository personRepository,
+        IVaccinationRecordRepository vaccinationRecordRepository)
         : IRequestHandler<GetVaccinationCardQuery, VaccinationCardResponse>
     {
-        private readonly IPersonRepository _personRepository;
-        private readonly IVaccinationRecordRepository _vaccinationRecordRepository;
-
-        public GetVaccinationCardQueryHandler(
-            IPersonRepository personRepository,
-            IVaccinationRecordRepository vaccinationRecordRepository)
-        {
-            _personRepository = personRepository;
-            _vaccinationRecordRepository = vaccinationRecordRepository;
-        }
-
         public async Task<VaccinationCardResponse> Handle(
             GetVaccinationCardQuery request,
             CancellationToken cancellationToken)
         {
 
-            var person = await _personRepository.GetByIdAsync(request.PersonId, cancellationToken)
+            var person = await personRepository.GetByIdAsync(request.PersonId, cancellationToken)
                 ?? throw new NotFoundException(nameof(Person), request.PersonId);
 
-            var records = await _vaccinationRecordRepository.GetByPersonAsync(
+            var records = await vaccinationRecordRepository.GetByPersonAsync(
                 person.Id,
                 cancellationToken);
 

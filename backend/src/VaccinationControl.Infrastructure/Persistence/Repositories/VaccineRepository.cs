@@ -4,32 +4,25 @@ using VaccinationControl.Domain.Entities;
 
 namespace VaccinationControl.Infrastructure.Persistence.Repositories
 {
-    public class VaccineRepository : IVaccineRepository
+    public class VaccineRepository(AppDbContext context) : IVaccineRepository
     {
         private const string LikeEscapeCharacter = "\\";
 
-        private readonly AppDbContext _context;
-
-        public VaccineRepository(AppDbContext context)
-        {
-            _context = context;
-        }
-
         public Task<bool> ExistsByNameAsync(string name, CancellationToken cancellationToken = default)
         {
-            return _context.Vaccines.AnyAsync(vaccine => vaccine.Name == name, cancellationToken);
+            return context.Vaccines.AnyAsync(vaccine => vaccine.Name == name, cancellationToken);
         }
 
         public Task<Vaccine?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            return _context.Vaccines
+            return context.Vaccines
                 .AsNoTracking()
                 .FirstOrDefaultAsync(vaccine => vaccine.Id == id, cancellationToken);
         }
 
         public void Add(Vaccine vaccine)
         {
-            _context.Vaccines.Add(vaccine);
+            context.Vaccines.Add(vaccine);
         }
 
         public async Task<(IReadOnlyList<Vaccine> Items, int TotalCount)> SearchAsync(
@@ -39,7 +32,7 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
             CancellationToken cancellationToken = default)
         {
             // Consulta somente leitura: sem tracking o EF não monta o change tracker.
-            var query = _context.Vaccines.AsNoTracking();
+            var query = context.Vaccines.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
