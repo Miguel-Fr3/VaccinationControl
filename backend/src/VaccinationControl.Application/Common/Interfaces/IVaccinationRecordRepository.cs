@@ -20,6 +20,14 @@ namespace VaccinationControl.Application.Common.Interfaces
             Guid recordId,
             CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Todos os registros da pessoa, com a vacina carregada, na ordem em que compõem o
+        /// cartão: por nome da vacina, depois tipo, depois número da dose.
+        /// </summary>
+        Task<IReadOnlyList<VaccinationRecord>> GetByPersonAsync(
+            Guid personId,
+            CancellationToken cancellationToken = default);
+
         void Add(VaccinationRecord vaccinationRecord);
     }
 }
