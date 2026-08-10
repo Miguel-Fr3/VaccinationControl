@@ -21,14 +21,16 @@ namespace VaccinationControl.Application.Common.Behaviors
                 return await next();
             }
 
-            var context = new ValidationContext<TRequest>(request);
             var failures = new List<ValidationFailure>();
 
             // Sequencial de propósito: um validator pode consultar o banco, e o DbContext
             // é scoped e não suporta duas operações simultâneas.
             foreach (var validator in validators)
             {
-                var result = await validator.ValidateAsync(context, cancellationToken);
+                // Cada validator recebe o request direto, e não um ValidationContext
+                // compartilhado: o contexto acumula as falhas de quem já rodou, e o
+                // resultado do segundo validator viria com as do primeiro junto.
+                var result = await validator.ValidateAsync(request, cancellationToken);
 
                 failures.AddRange(result.Errors);
             }
