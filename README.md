@@ -3,9 +3,9 @@
 Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vacinas, aplicações e histórico de vacinação.
 
 > **Estado atual:** backend em desenvolvimento. Cadastro de vacinas, cadastro e remoção de
-> pessoas e registro de vacinação com validação de dose estão funcionando de ponta a ponta.
-> A consulta do cartão completo e a autenticação ainda não foram implementadas — veja
-> [Status e próximos passos](#status-e-próximos-passos).
+> pessoas, registro de vacinação com validação de dose e consulta do cartão estão
+> funcionando de ponta a ponta. A exclusão de um registro específico e a autenticação ainda
+> não foram implementadas — veja [Status e próximos passos](#status-e-próximos-passos).
 
 ## Tecnologias
 
@@ -48,7 +48,8 @@ Ainda não iniciado. A pasta `frontend/` existe, mas está vazia.
 | Cadastro e consulta de vacinas | Concluída |
 | Cadastro e remoção de pessoas | Concluída |
 | Registro de vacinação com validação de dose | Concluída |
-| Consulta e exclusão do cartão de vacinação | Planejada |
+| Consulta do cartão de vacinação | Concluída |
+| Exclusão de registro do cartão | Planejada |
 | Autenticação JWT | Planejada |
 | Testes unitários e de integração | Planejada |
 | Frontend em React | Planejada |
@@ -396,6 +397,83 @@ O registro precisa pertencer à pessoa da rota: consultar um registro válido so
 | 400 | Identificador vazio (`00000000-...`) |
 | 404 | Registro inexistente ou pertencente a outra pessoa |
 
+### Cartão de vacinação
+
+#### `GET /api/people/{personId}/vaccination-card`
+
+Consulta o cartão de vacinação de uma pessoa, com as aplicações **agrupadas por vacina** —
+o enunciado pede o nome da vacina e as doses recebidas dela, não uma lista plana de
+registros.
+
+O cartão não é uma tabela: é a projeção dos registros de vacinação da pessoa. As vacinas vêm
+em ordem alfabética e, dentro de cada uma, as doses vêm por tipo e número.
+
+| HTTP | Quando |
+| --- | --- |
+| 200 | Cartão retornado, mesmo que vazio |
+| 400 | Identificador vazio (`00000000-...`) |
+| 404 | Não existe pessoa com esse identificador |
+
+Uma pessoa sem nenhuma aplicação registrada devolve **200 com `vaccines` vazio**, não 404 —
+a pessoa existe, o cartão dela é que está vazio.
+
+```json
+{
+  "personId": "d1614d08-f31d-4da4-b654-544c66407697",
+  "personName": "Maria Silva",
+  "document": "33344455566",
+  "vaccines": [
+    {
+      "vaccineId": "9016c829-3490-4164-90fc-5de8702bf760",
+      "vaccineName": "Antitetanica",
+      "totalDoses": 2,
+      "doses": [
+        {
+          "recordId": "676c5a25-4947-484e-9dde-fd146bd65fdc",
+          "vaccinationType": "Dose",
+          "doseNumber": 1,
+          "vaccinationDate": "2024-02-01"
+        },
+        {
+          "recordId": "9ef33986-6685-4be3-b17b-eb2346f418f8",
+          "vaccinationType": "Dose",
+          "doseNumber": 2,
+          "vaccinationDate": "2024-04-01"
+        }
+      ]
+    },
+    {
+      "vaccineId": "7ad3501a-930a-4be1-8913-71b44d9069e8",
+      "vaccineName": "Hepatite B",
+      "totalDoses": 3,
+      "doses": [
+        {
+          "recordId": "b9299d06-7393-47cd-9915-3839375a4ec5",
+          "vaccinationType": "Dose",
+          "doseNumber": 1,
+          "vaccinationDate": "2024-01-10"
+        },
+        {
+          "recordId": "03dea2e7-b5a5-48d5-a212-68240b9cacc5",
+          "vaccinationType": "Dose",
+          "doseNumber": 2,
+          "vaccinationDate": "2024-03-10"
+        },
+        {
+          "recordId": "eb9d533f-64f7-4791-b857-b616a2378b15",
+          "vaccinationType": "BoosterDose",
+          "doseNumber": 1,
+          "vaccinationDate": "2024-09-10"
+        }
+      ]
+    }
+  ]
+}
+```
+
+`totalDoses` conta todas as aplicações daquela vacina, somando doses normais e reforços.
+O `recordId` de cada dose é o identificador usado para remover aquele registro específico.
+
 ### Exemplos de chamada
 
 ```bash
@@ -449,6 +527,9 @@ curl -X POST "http://localhost:5201/api/people/$PESSOA/vaccinations" \
 
 # consultar um registro do cartão
 curl "http://localhost:5201/api/people/$PESSOA/vaccinations/290c5a34-570e-46af-97e5-548ce265ac48"
+
+# consultar o cartão completo, agrupado por vacina
+curl "http://localhost:5201/api/people/$PESSOA/vaccination-card"
 ```
 
 ---
@@ -489,7 +570,9 @@ validator juntos:
 Application/Vaccinations/
 ├── VaccinationRecordResponse.cs
 ├── Commands/RegisterVaccination/      Request + Command + Handler + Validator
-└── Queries/GetVaccinationRecordById/  Query + Handler + Validator
+└── Queries/
+    ├── GetVaccinationRecordById/      Query + Handler + Validator
+    └── GetVaccinationCard/            Query + Handler + Validator + 3 DTOs do cartão
 ```
 
 O `RegisterVaccinationRequest` existe separado do command porque o `personId` vem da rota:

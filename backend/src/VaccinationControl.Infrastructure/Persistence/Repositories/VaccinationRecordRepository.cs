@@ -38,6 +38,21 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
                     cancellationToken);
         }
 
+        public async Task<IReadOnlyList<VaccinationRecord>> GetByPersonAsync(
+            Guid personId,
+            CancellationToken cancellationToken = default)
+        {
+            return await _context.VaccinationRecords
+                .AsNoTracking()
+                // A vacina vem junto porque o cartão exibe o nome dela em cada grupo.
+                .Include(record => record.Vaccine)
+                .Where(record => record.PersonId == personId)
+                .OrderBy(record => record.Vaccine.Name)
+                .ThenBy(record => record.VaccinationType)
+                .ThenBy(record => record.DoseNumber)
+                .ToListAsync(cancellationToken);
+        }
+
         public void Add(VaccinationRecord vaccinationRecord)
         {
             _context.VaccinationRecords.Add(vaccinationRecord);
