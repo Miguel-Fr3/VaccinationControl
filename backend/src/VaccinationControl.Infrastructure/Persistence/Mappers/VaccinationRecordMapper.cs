@@ -20,9 +20,16 @@ namespace VaccinationControl.Infrastructure.Persistence.Mappers
             builder.Property(record => record.VaccinationDate)
                 .IsRequired();
 
-            // Defesa em profundidade para a regra de dose duplicada.
-            builder.HasIndex(record => new { record.PersonId, record.VaccineId, record.DoseNumber })
-                .IsUnique();
+            // Defesa em profundidade para a regra de dose duplicada. O tipo entra na chave
+            // porque doses normais e reforços têm numeração independente: a dose 1 normal e
+            // a dose 1 de reforço são registros distintos e legítimos.
+            builder.HasIndex(record => new
+            {
+                record.PersonId,
+                record.VaccineId,
+                record.VaccinationType,
+                record.DoseNumber
+            }).IsUnique();
 
             // Uma vacina em uso não pode ser removida junto com o registro.
             builder.HasOne(record => record.Vaccine)
