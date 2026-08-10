@@ -2,9 +2,9 @@
 
 Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vacinas, aplicações e histórico de vacinação.
 
-> **Estado atual:** backend em desenvolvimento. Os cadastros de vacinas e de pessoas estão
-> funcionando de ponta a ponta, incluindo a remoção de pessoa com exclusão em cascata do
-> cartão. O registro de vacinação e a autenticação ainda não foram implementados — veja
+> **Estado atual:** backend em desenvolvimento. Cadastro de vacinas, cadastro e remoção de
+> pessoas e registro de vacinação com validação de dose estão funcionando de ponta a ponta.
+> A consulta do cartão completo e a autenticação ainda não foram implementadas — veja
 > [Status e próximos passos](#status-e-próximos-passos).
 
 ## Tecnologias
@@ -47,7 +47,7 @@ Ainda não iniciado. A pasta `frontend/` existe, mas está vazia.
 | Tratamento global de exceções | Concluída |
 | Cadastro e consulta de vacinas | Concluída |
 | Cadastro e remoção de pessoas | Concluída |
-| Registro de vacinação com validação de dose | Planejada |
+| Registro de vacinação com validação de dose | Concluída |
 | Consulta e exclusão do cartão de vacinação | Planejada |
 | Autenticação JWT | Planejada |
 | Testes unitários e de integração | Planejada |
@@ -262,8 +262,8 @@ A resposta usa sempre o mesmo envelope, com ou sem paginação. Quando não há 
 
 #### `POST /api/people`
 
-Cadastra uma pessoa. O documento é o número de identificação único — CPF, RG ou matrícula;
-o formato não é imposto.
+Cadastra uma pessoa. O documento é o número de identificação único da pessoa e precisa ter
+exatamente 11 caracteres.
 
 ```json
 { "name": "Maria Silva", "document": "12345678901" }
@@ -272,7 +272,7 @@ o formato não é imposto.
 | HTTP | Quando |
 | --- | --- |
 | 201 | Pessoa cadastrada; `Location` aponta para o recurso |
-| 400 | Nome ou documento vazios, ou acima do tamanho permitido |
+| 400 | Nome vazio ou acima de 200 caracteres; documento fora dos 11 caracteres |
 | 409 | Já existe pessoa com esse documento |
 
 ```json
@@ -304,6 +304,97 @@ catálogo não são afetadas.
 | 204 | Pessoa removida; sem corpo na resposta |
 | 400 | Identificador vazio (`00000000-...`) |
 | 404 | Não existe pessoa com esse identificador |
+
+### Vacinações
+
+Os registros ficam aninhados sob a pessoa, porque um registro de vacinação não existe
+isolado — ele pertence ao cartão de alguém. O `personId` vem sempre da rota, nunca do corpo,
+para que não haja duas fontes de verdade que possam divergir.
+
+#### `POST /api/people/{personId}/vaccinations`
+
+Registra uma vacinação no cartão da pessoa.
+
+```json
+{
+  "vaccineId": "49eb0ff2-03c4-4601-9735-d7e00622c32e",
+  "vaccinationType": "Dose",
+  "doseNumber": 1,
+  "vaccinationDate": "2024-02-10"
+}
+```
+
+`vaccinationType` aceita `Dose` ou `BoosterDose` — enums trafegam como texto, para que o
+cliente não precise conhecer a numeração interna do domínio.
+
+| HTTP | Quando |
+| --- | --- |
+| 201 | Vacinação registrada; `Location` aponta para o recurso |
+| 400 | Violação de RN01 ou RN02 |
+| 404 | Pessoa ou vacina inexistente (RN03, RN04) |
+| 409 | Violação de RN05, RN06, RN07 ou RN08 |
+
+```json
+{
+  "id": "290c5a34-570e-46af-97e5-548ce265ac48",
+  "personId": "c47da9ee-b418-49e4-8264-e8830e7913fd",
+  "vaccineId": "49eb0ff2-03c4-4601-9735-d7e00622c32e",
+  "vaccineName": "Hepatite B",
+  "vaccinationType": "Dose",
+  "doseNumber": 1,
+  "vaccinationDate": "2024-02-10"
+}
+```
+
+##### Regras da dose
+
+| Regra | Descrição | Resposta |
+| --- | --- | --- |
+| RN01 | A dose precisa ser maior ou igual a 1 | 400 |
+| RN02 | A data de aplicação não pode ser futura | 400 |
+| RN03 | A pessoa precisa existir | 404 |
+| RN04 | A vacina precisa existir | 404 |
+| RN05 | A mesma dose **do mesmo tipo** não se repete para a pessoa e vacina | 409 |
+| RN06 | A dose N exige a dose N−1 **do mesmo tipo** já registrada | 409 |
+| RN07 | A dose N não pode ser anterior à data da dose N−1 **do mesmo tipo** | 409 |
+| RN08 | Um reforço exige ao menos uma dose normal da mesma vacina | 409 |
+
+RN01 e RN02 dependem só do formato e ficam no validator do command. As demais dependem do
+estado já gravado, então vivem no handler — é o que permite distinguir 404 de 409, coisa que
+um validator não faria, já que ele sempre resulta em 400.
+
+##### Numeração independente por tipo
+
+Doses normais e reforços têm **sequências próprias**. A dose normal 1 e a dose de reforço 1
+são registros distintos e legítimos, e ter a dose normal 1 não habilita o reforço 2 — o
+reforço 2 exige o reforço 1.
+
+```text
+Dose         1 ──> 2 ──> 3      sequência própria
+BoosterDose  1 ──> 2            sequência própria, mas só começa
+                                depois de existir alguma Dose (RN08)
+```
+
+RN05, RN06 e RN07 comparam apenas registros do mesmo tipo. RN08 é a única que cruza os dois:
+ela fecha a brecha que as demais não pegam, já que a dose 1 de qualquer sequência não tem
+antecessora para comparar — sem ela, o primeiro registro do cartão poderia entrar como
+reforço.
+
+O índice único do banco acompanha essa decisão e cobre
+`(PersonId, VaccineId, VaccinationType, DoseNumber)`.
+
+#### `GET /api/people/{personId}/vaccinations/{recordId}`
+
+Consulta um registro do cartão. É o endereço devolvido no `Location` do registro.
+
+O registro precisa pertencer à pessoa da rota: consultar um registro válido sob outro
+`personId` devolve 404, e não os dados de outra pessoa.
+
+| HTTP | Quando |
+| --- | --- |
+| 200 | Registro encontrado |
+| 400 | Identificador vazio (`00000000-...`) |
+| 404 | Registro inexistente ou pertencente a outra pessoa |
 
 ### Exemplos de chamada
 
@@ -342,6 +433,24 @@ curl http://localhost:5201/api/people/94549402-7498-483b-b31a-da2c40d471ce
 curl -X DELETE http://localhost:5201/api/people/94549402-7498-483b-b31a-da2c40d471ce
 ```
 
+```bash
+PESSOA=94549402-7498-483b-b31a-da2c40d471ce
+VACINA=3df1340d-3381-4021-a782-18679e777c50
+
+# registrar a primeira dose
+curl -X POST "http://localhost:5201/api/people/$PESSOA/vaccinations" \
+  -H "Content-Type: application/json" \
+  -d "{\"vaccineId\":\"$VACINA\",\"vaccinationType\":\"Dose\",\"doseNumber\":1,\"vaccinationDate\":\"2024-02-10\"}"
+
+# registrar o primeiro reforço — numeração própria, começa em 1
+curl -X POST "http://localhost:5201/api/people/$PESSOA/vaccinations" \
+  -H "Content-Type: application/json" \
+  -d "{\"vaccineId\":\"$VACINA\",\"vaccinationType\":\"BoosterDose\",\"doseNumber\":1,\"vaccinationDate\":\"2024-05-10\"}"
+
+# consultar um registro do cartão
+curl "http://localhost:5201/api/people/$PESSOA/vaccinations/290c5a34-570e-46af-97e5-548ce265ac48"
+```
+
 ---
 
 ## Estrutura do projeto
@@ -377,14 +486,15 @@ Dentro da Application, cada caso de uso tem a própria pasta com command/query, 
 validator juntos:
 
 ```text
-Application/People/
-├── PersonResponse.cs
-├── Commands/
-│   ├── CreatePerson/
-│   └── DeletePerson/
-└── Queries/
-    └── GetPersonById/
+Application/Vaccinations/
+├── VaccinationRecordResponse.cs
+├── Commands/RegisterVaccination/      Request + Command + Handler + Validator
+└── Queries/GetVaccinationRecordById/  Query + Handler + Validator
 ```
+
+O `RegisterVaccinationRequest` existe separado do command porque o `personId` vem da rota:
+o command precisa dele para ser uma entrada completa do caso de uso, mas ele não deve
+aparecer no corpo documentado pelo OpenAPI.
 
 ---
 
