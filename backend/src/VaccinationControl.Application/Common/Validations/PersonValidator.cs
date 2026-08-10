@@ -17,7 +17,8 @@ namespace VaccinationControl.Application.Common.Validations
             // A unicidade do documento depende do banco e é verificada no handler.
             RuleFor(person => person.Document)
                 .NotEmpty()
-                .MaximumLength(50);
+                .MinimumLength(11)
+                .MaximumLength(11);
         }
     }
 }
