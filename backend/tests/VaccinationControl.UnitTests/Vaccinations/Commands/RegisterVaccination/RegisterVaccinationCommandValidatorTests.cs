@@ -2,7 +2,7 @@ using FluentValidation.TestHelper;
 using VaccinationControl.Application.Vaccinations.Commands.RegisterVaccination;
 using VaccinationControl.Domain.Enums;
 
-namespace VaccinationControl.UnitTests.Vaccinations
+namespace VaccinationControl.UnitTests.Vaccinations.Commands.RegisterVaccination
 {
     /// <summary>
     /// Cobre RN01 e RN02 — as únicas regras de dose que dependem só do formato da

@@ -1,7 +1,7 @@
 using FluentValidation.TestHelper;
 using VaccinationControl.Application.Vaccines.Queries.GetVaccines;
 
-namespace VaccinationControl.UnitTests.Vaccines
+namespace VaccinationControl.UnitTests.Vaccines.Queries.GetVaccines
 {
     public class GetVaccinesQueryValidatorTests
     {

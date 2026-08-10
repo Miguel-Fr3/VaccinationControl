@@ -1,7 +1,7 @@
 using FluentValidation.TestHelper;
 using VaccinationControl.Application.Auth.Commands.RegisterUser;
 
-namespace VaccinationControl.UnitTests.Auth
+namespace VaccinationControl.UnitTests.Auth.Commands.RegisterUser
 {
     public class RegisterUserCommandValidatorTests
     {

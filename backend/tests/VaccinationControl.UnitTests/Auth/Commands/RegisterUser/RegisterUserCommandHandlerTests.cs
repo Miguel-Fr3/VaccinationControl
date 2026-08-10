@@ -5,7 +5,7 @@ using VaccinationControl.Application.Common.Interfaces;
 using VaccinationControl.Domain.Entities;
 using VaccinationControl.Domain.Exceptions;
 
-namespace VaccinationControl.UnitTests.Auth
+namespace VaccinationControl.UnitTests.Auth.Commands.RegisterUser
 {
     public class RegisterUserCommandHandlerTests
     {

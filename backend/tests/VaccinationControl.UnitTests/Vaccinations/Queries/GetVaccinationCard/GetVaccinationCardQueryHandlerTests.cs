@@ -6,7 +6,7 @@ using VaccinationControl.Domain.Entities;
 using VaccinationControl.Domain.Enums;
 using VaccinationControl.Domain.Exceptions;
 
-namespace VaccinationControl.UnitTests.Vaccinations
+namespace VaccinationControl.UnitTests.Vaccinations.Queries.GetVaccinationCard
 {
     public class GetVaccinationCardQueryHandlerTests
     {

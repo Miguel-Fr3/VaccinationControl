@@ -1,7 +1,7 @@
 using FluentValidation.TestHelper;
 using VaccinationControl.Application.People.Commands.CreatePerson;
 
-namespace VaccinationControl.UnitTests.People
+namespace VaccinationControl.UnitTests.People.Commands.CreatePerson
 {
     public class CreatePersonCommandValidatorTests
     {
