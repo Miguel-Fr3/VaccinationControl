@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using VaccinationControl.Application.Common.Interfaces;
 using VaccinationControl.Infrastructure.Persistence;
 using VaccinationControl.Infrastructure.Persistence.Repositories;
+using VaccinationControl.Infrastructure.Security;
 
 namespace VaccinationControl.Infrastructure
 {
@@ -27,6 +28,13 @@ namespace VaccinationControl.Infrastructure
             services.AddScoped<IVaccineRepository, VaccineRepository>();
             services.AddScoped<IPersonRepository, PersonRepository>();
             services.AddScoped<IVaccinationRecordRepository, VaccinationRecordRepository>();
+            services.AddScoped<IUserRepository, UserRepository>();
+
+            services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
+
+            //Singleton porque não tem estado e é thread-safe; o mesmo para o gerador de token.
+            services.AddSingleton<IPasswordHasher, PasswordHasherAdapter>();
+            services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
             return services;
         }

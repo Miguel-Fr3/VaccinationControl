@@ -7,20 +7,17 @@ using VaccinationControl.Domain.Exceptions;
 namespace VaccinationControl.Infrastructure.Persistence
 {
     // SaveChangesAsync herdado de DbContext já satisfaz IUnitOfWork.
-    public class AppDbContext : DbContext, IUnitOfWork
+    public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUser currentUser)
+        : DbContext(options), IUnitOfWork
     {
         private const int ConstraintErrorCode = 19;
         private const int UniqueViolationCode = 2067;
         private const int PrimaryKeyViolationCode = 1555;
 
-        public AppDbContext(DbContextOptions<AppDbContext> options)
-            : base(options)
-        {
-        }
-
         public DbSet<Person> People => Set<Person>();
         public DbSet<Vaccine> Vaccines => Set<Vaccine>();
         public DbSet<VaccinationRecord> VaccinationRecords => Set<VaccinationRecord>();
+        public DbSet<User> Users => Set<User>();
 
         /// <summary>
         /// Os handlers verificam duplicidade antes de gravar, mas entre a verificação e o
@@ -29,6 +26,8 @@ namespace VaccinationControl.Infrastructure.Persistence
         /// </summary>
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
+            StampAuditFields();
+
             try
             {
                 return await base.SaveChangesAsync(cancellationToken);
@@ -46,6 +45,29 @@ namespace VaccinationControl.Infrastructure.Persistence
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
             base.OnModelCreating(modelBuilder);
+        }
+
+        /// <summary>
+        /// Preenche a auditoria a partir do token, num lugar só. Deixar isso a cargo de cada
+        /// handler significaria esquecer em algum — e a origem do dado é sempre a mesma.
+        /// Em requisições anônimas (cadastro do primeiro usuário) o autor fica vazio.
+        /// </summary>
+        private void StampAuditFields()
+        {
+            var userId = currentUser.Id ?? Guid.Empty;
+
+            foreach (var entry in ChangeTracker.Entries<EntityBase>())
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    entry.Entity.CreatedBy = userId;
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    entry.Entity.UpdatedAt = DateTime.UtcNow;
+                    entry.Entity.UpdatedBy = userId;
+                }
+            }
         }
 
         private static bool IsUniqueConstraintViolation(DbUpdateException exception)
