@@ -6,8 +6,6 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
 {
     public class VaccineRepository(AppDbContext context) : IVaccineRepository
     {
-        private const string LikeEscapeCharacter = "\\";
-
         public Task<bool> ExistsByNameAsync(string name, CancellationToken cancellationToken = default)
         {
             return context.Vaccines.AnyAsync(vaccine => vaccine.Name == name, cancellationToken);
@@ -36,10 +34,10 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var pattern = $"%{EscapeLikePattern(search.Trim())}%";
+                var pattern = LikePattern.Contains(search);
 
                 query = query.Where(vaccine =>
-                    EF.Functions.Like(vaccine.Name, pattern, LikeEscapeCharacter));
+                    EF.Functions.Like(vaccine.Name, pattern, LikePattern.EscapeCharacter));
             }
 
             // Total antes do recorte: é o tamanho do resultado filtrado, não da página.
@@ -60,18 +58,6 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
             var items = await query.ToListAsync(cancellationToken);
 
             return (items, totalCount);
-        }
-
-        /// <summary>
-        /// Neutraliza os curingas do LIKE para que um termo com % ou _ seja buscado
-        /// literalmente, em vez de virar uma expressão de correspondência.
-        /// </summary>
-        private static string EscapeLikePattern(string term)
-        {
-            return term
-                .Replace(LikeEscapeCharacter, LikeEscapeCharacter + LikeEscapeCharacter)
-                .Replace("%", LikeEscapeCharacter + "%")
-                .Replace("_", LikeEscapeCharacter + "_");
         }
     }
 }
