@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Scalar.AspNetCore;
 using VaccinationControl.Api.Middleware;
 using VaccinationControl.Application;
@@ -9,7 +10,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.ContentRootPath);
 
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    // Enums trafegam como texto ("Dose", "BoosterDose"): um número cru no JSON obrigaria
+    // o cliente a conhecer a numeração interna do domínio.
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

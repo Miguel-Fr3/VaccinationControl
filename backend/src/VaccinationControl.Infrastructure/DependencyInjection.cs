@@ -26,6 +26,7 @@ namespace VaccinationControl.Infrastructure
 
             services.AddScoped<IVaccineRepository, VaccineRepository>();
             services.AddScoped<IPersonRepository, PersonRepository>();
+            services.AddScoped<IVaccinationRecordRepository, VaccinationRecordRepository>();
 
             return services;
         }

@@ -14,8 +14,9 @@ namespace VaccinationControl.Infrastructure.Persistence.Mappers
                 .HasMaxLength(200)
                 .IsRequired();
 
+            // O documento tem tamanho fixo; a coluna acompanha a regra dos validators.
             builder.Property(person => person.Document)
-                .HasMaxLength(50)
+                .HasMaxLength(11)
                 .IsRequired();
 
             // O documento é o número de identificação único da pessoa.
