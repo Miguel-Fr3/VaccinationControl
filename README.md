@@ -2,8 +2,8 @@
 
 Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vacinas, aplicações e histórico de vacinação.
 
-> **Estado atual:** as seis funcionalidades estão implementadas, e a API exige
-> autenticação. Faltam os testes automatizados — veja
+> **Estado atual:** as seis funcionalidades estão implementadas, a API exige autenticação e a
+> camada Application está coberta por testes unitários. Faltam os testes de integração — veja
 > [Status e próximos passos](#status-e-próximos-passos).
 
 ## Tecnologias
@@ -16,7 +16,7 @@ Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vac
 * SQLite
 * MediatR (CQRS)
 * FluentValidation
-* xUnit
+* xUnit, FluentAssertions e NSubstitute
 * Scalar (documentação da API)
 
 ### Frontend — planejado
@@ -51,7 +51,8 @@ Ainda não iniciado. A pasta `frontend/` existe, mas está vazia.
 | Exclusão de registro do cartão | Concluída |
 | Listagem de pessoas com busca e paginação | Concluída |
 | Autenticação JWT | Concluída |
-| Testes unitários e de integração | Planejada |
+| Testes unitários | Concluída |
+| Testes de integração | Planejada |
 | Frontend em React | Planejada |
 
 ---
@@ -848,20 +849,48 @@ Para executar todos os testes do backend:
 dotnet test
 ```
 
-Os testes são divididos entre:
-
-* **Unit Tests** — validators, regras de domínio e handlers isolados
-* **Integration Tests** — API completa via `WebApplicationFactory` sobre SQLite em memória
-
-> Os dois projetos existem e estão ligados aos projetos de `src/`, mas ainda contêm apenas o
-> teste de exemplo do template. A suíte real será escrita nas próximas etapas.
-
 Para rodar um projeto ou um teste específico:
 
 ```bash
 dotnet test tests/VaccinationControl.UnitTests
 dotnet test --filter "FullyQualifiedName~NomeDoTeste"
 ```
+
+### Testes unitários
+
+Cobrem a camada Application com **xUnit**, **FluentAssertions** e **NSubstitute**. Nenhum deles
+toca banco: os repositórios são substituídos, e o que se verifica é a decisão do handler diante
+do estado informado.
+
+| Alvo | O que cobre |
+| --- | --- |
+| `RegisterVaccinationCommandHandler` | RN03 a RN08 — existência, duplicidade, sequência, ordem cronológica e reforço |
+| Validators de command e query | RN01, RN02, limites de página e busca, e-mail e senha |
+| `ValidationBehavior` | o mecanismo que torna a validação automática |
+| Handlers de cadastro | conflito de nome e documento, remoção de espaços, gravação |
+| `LoginCommandHandler` | credencial inválida e emissão do token |
+| `GetVaccinationCardQueryHandler` | agrupamento por vacina, cartão vazio, `recordId` de cada dose |
+
+A suíte cobre também o **caso negativo** que costuma passar despercebido: quando uma regra
+falha, `Add` e `SaveChangesAsync` não podem ser chamados.
+
+Dois comportamentos de segurança também têm teste: o login usa a mesma mensagem para e-mail
+inexistente e senha errada, e o cadastro grava o hash e nunca a senha em claro.
+
+Nomes de teste referenciam a regra (`RN06_deve_exigir_a_anterior_do_mesmo_tipo`), ligando a
+suíte à tabela de [regras da dose](#regras-da-dose).
+
+### Testes de integração — planejados
+
+O projeto existe e referencia a Api, e o `Program` é `partial` justamente para o
+`WebApplicationFactory`. Ainda contém só o teste de exemplo do template.
+
+Ficam para essa etapa os comportamentos que dependem de EF Core e `HttpContext` — a exclusão em
+cascata, o carimbo de auditoria e a tradução de exceção em status HTTP.
+
+> Com a *fallback policy* global, todo teste que chamar um endpoint protegido precisa obter um
+> token antes. Vale um helper na factory que cadastre um usuário e devolva um `HttpClient` já
+> com o cabeçalho `Authorization`.
 
 ---
 
