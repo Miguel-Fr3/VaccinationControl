@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using VaccinationControl.Application.Common.Extensions;
 using VaccinationControl.Application.Common.Interfaces;
 using VaccinationControl.Domain.Entities;
 using VaccinationControl.Domain.Enums;
@@ -96,7 +97,7 @@ namespace VaccinationControl.Application.Vaccinations.Commands.RegisterVaccinati
             if (sameTypeDoses.Any(dose => dose.DoseNumber == request.DoseNumber))
             {
                 throw new ConflictException(
-                    $"A {Describe(request.VaccinationType)} {request.DoseNumber} da vacina "
+                    $"A {request.VaccinationType.Describe()} {request.DoseNumber} da vacina "
                     + $"'{vaccine.Name}' já foi registrada para esta pessoa.");
             }
         }
@@ -114,24 +115,12 @@ namespace VaccinationControl.Application.Vaccinations.Commands.RegisterVaccinati
             if (request.DoseNumber > 1
                 && sameTypeDoses.All(dose => dose.DoseNumber != previousDoseNumber))
             {
-                var description = Describe(request.VaccinationType);
+                var description = request.VaccinationType.Describe();
 
                 throw new ConflictException(
                     $"A {description} {previousDoseNumber} precisa ser registrada antes da "
                     + $"{description} {request.DoseNumber}.");
             }
-        }
-
-        /// <summary>
-        /// Nome do tipo em português, para compor mensagens legíveis ao usuário da API.
-        /// </summary>
-        private static string Describe(VaccinationTypeEnum vaccinationType)
-        {
-            return vaccinationType switch
-            {
-                VaccinationTypeEnum.BoosterDose => "dose de reforço",
-                _ => "dose"
-            };
         }
 
         /// <summary>
@@ -170,7 +159,7 @@ namespace VaccinationControl.Application.Vaccinations.Commands.RegisterVaccinati
 
             if (previousDose is not null && request.VaccinationDate < previousDose.VaccinationDate)
             {
-                var description = Describe(request.VaccinationType);
+                var description = request.VaccinationType.Describe();
 
                 throw new ConflictException(
                     $"A {description} {request.DoseNumber} não pode ser anterior à "

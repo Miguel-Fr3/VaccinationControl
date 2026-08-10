@@ -57,5 +57,10 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
         {
             _context.VaccinationRecords.Add(vaccinationRecord);
         }
+
+        public void Remove(VaccinationRecord vaccinationRecord)
+        {
+            _context.VaccinationRecords.Remove(vaccinationRecord);
+        }
     }
 }
