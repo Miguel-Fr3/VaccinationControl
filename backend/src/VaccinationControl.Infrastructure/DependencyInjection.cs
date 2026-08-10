@@ -30,8 +30,6 @@ namespace VaccinationControl.Infrastructure
             services.AddScoped<IVaccinationRecordRepository, VaccinationRecordRepository>();
             services.AddScoped<IUserRepository, UserRepository>();
 
-            services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
-
             //Singleton porque não tem estado e é thread-safe; o mesmo para o gerador de token.
             services.AddSingleton<IPasswordHasher, PasswordHasherAdapter>();
             services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();

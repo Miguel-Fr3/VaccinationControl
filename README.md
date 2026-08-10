@@ -2,8 +2,7 @@
 
 Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vacinas, aplicações e histórico de vacinação.
 
-> **Estado atual:** as seis funcionalidades estão implementadas, a API exige autenticação e a
-> camada Application está coberta por testes unitários. Faltam os testes de integração — veja
+> **Estado atual:** o backend está completo. Resta o frontend — veja
 > [Status e próximos passos](#status-e-próximos-passos).
 
 ## Tecnologias
@@ -52,7 +51,7 @@ Ainda não iniciado. A pasta `frontend/` existe, mas está vazia.
 | Listagem de pessoas com busca e paginação | Concluída |
 | Autenticação JWT | Concluída |
 | Testes unitários | Concluída |
-| Testes de integração | Planejada |
+| Testes de integração | Concluída |
 | Frontend em React | Planejada |
 
 ---
@@ -276,6 +275,11 @@ dotnet user-secrets set "Jwt:Key" "<chave com no mínimo 32 bytes>" \
 
 Em produção, use variável de ambiente. Sem a chave configurada a aplicação **não sobe**, com
 mensagem explicando como defini-la — falhar no startup é melhor que rodar com uma chave padrão.
+
+A seção `Jwt` é lida **uma única vez**, no `Program.cs`, e a mesma instância de `JwtSettings`
+assina os tokens no `JwtTokenGenerator` e valida os recebidos no `AddJwtBearer`. Ler a chave em
+dois pontos independentes permitiria que divergissem, e o sintoma seria a API rejeitar o token
+que ela própria emitiu — sem nenhum erro apontando a causa.
 
 ### Vacinas
 
@@ -545,8 +549,8 @@ permanente dele.
 
 #### `GET /api/people/{personId}/vaccination-card`
 
-Consulta o cartão de vacinação de uma pessoa, com as aplicações **agrupadas por vacina** —
-o enunciado pede o nome da vacina e as doses recebidas dela, não uma lista plana de
+Consulta o cartão de vacinação de uma pessoa, com as aplicações **agrupadas por vacina** — é
+assim que um cartão se lê: o nome da vacina e as doses recebidas dela, não uma lista plana de
 registros.
 
 O cartão não é uma tabela: é a projeção dos registros de vacinação da pessoa. As vacinas vêm
@@ -707,8 +711,8 @@ VaccinationControl/
 │   │   └── VaccinationControl.Infrastructure/ DbContext, mappers, repositórios
 │   │
 │   ├── tests/
-│   │   ├── VaccinationControl.UnitTests/
-│   │   └── VaccinationControl.IntegrationTests/
+│   │   ├── VaccinationControl.UnitTests/        espelha as pastas da Application
+│   │   └── VaccinationControl.IntegrationTests/ um arquivo por cenário
 │   │
 │   └── VaccinationControl.slnx
 │
@@ -880,17 +884,53 @@ inexistente e senha errada, e o cadastro grava o hash e nunca a senha em claro.
 Nomes de teste referenciam a regra (`RN06_deve_exigir_a_anterior_do_mesmo_tipo`), ligando a
 suíte à tabela de [regras da dose](#regras-da-dose).
 
-### Testes de integração — planejados
+As pastas **espelham as de `Application/`**, então achar o teste de um arquivo é mecânico:
+mesmo caminho, com o sufixo `Tests`.
 
-O projeto existe e referencia a Api, e o `Program` é `partial` justamente para o
-`WebApplicationFactory`. Ainda contém só o teste de exemplo do template.
+```text
+src/…/Application/Vaccines/Commands/CreateVaccine/CreateVaccineCommandHandler.cs
+tests/VaccinationControl.UnitTests/Vaccines/Commands/CreateVaccine/CreateVaccineCommandHandlerTests.cs
+```
 
-Ficam para essa etapa os comportamentos que dependem de EF Core e `HttpContext` — a exclusão em
-cascata, o carimbo de auditoria e a tradução de exceção em status HTTP.
+### Testes de integração
 
-> Com a *fallback policy* global, todo teste que chamar um endpoint protegido precisa obter um
-> token antes. Vale um helper na factory que cadastre um usuário e devolva um `HttpClient` já
-> com o cabeçalho `Authorization`.
+Sobem a API inteira em memória com `WebApplicationFactory` e exercitam os endpoints por HTTP
+real. Cobrem o que nenhum teste unitário alcança: persistência, cascata no banco, auditoria a
+partir do token e tradução de exceção em status HTTP.
+
+| Arquivo | O que cobre |
+| --- | --- |
+| `VaccinationFlowTests` | fluxo de ponta a ponta, RN03 a RN08 pela API, cascata da remoção |
+| `AuthenticationTests` | 401 sem token, documentação anônima, cadastro e login |
+| `ListingTests` | busca, paginação, caixa e escape de curinga — tudo no SQL de verdade |
+| `ErrorContractTests` | `application/problem+json`, dicionário de erros, agregação de campos |
+| `AuditTests` | `CreatedBy` vindo do token, cadastro anônimo sem autor, senha nunca em claro |
+
+Aqui as pastas **não** espelham o `src/`: cada arquivo é um cenário que atravessa vários casos
+de uso, então agrupar por origem não ajudaria. O que fica separado é a infraestrutura, em
+`Support/` — a factory e o cliente autenticado não são teste, são o que permite escrevê-los.
+
+```text
+tests/VaccinationControl.IntegrationTests/
+├── Support/
+│   ├── ApiFactory.cs      sobe a API com banco em memória
+│   └── ApiClient.cs       cadastra um usuário e devolve o cliente autenticado
+└── *Tests.cs              um arquivo por cenário
+```
+
+A `ApiFactory` troca só duas coisas do host real:
+
+**Banco** — SQLite `:memory:` com a conexão mantida aberta pela vida do fixture; fechá-la
+descarta o banco. Usa `MigrateAsync()` em vez de `EnsureCreated()`, então os testes também
+provam que as migrations produzem um schema funcional, com índices únicos e `ON DELETE CASCADE`.
+
+**Chave JWT** — via `UseSetting`, e não `ConfigureAppConfiguration`. O `Program.cs` lê a
+configuração de JWT ao montar o builder, antes de qualquer fonte que a factory adicione depois;
+uma chave que chegue tarde simplesmente não é usada.
+
+O `ApiClient.AutenticadoAsync` cadastra um usuário com e-mail único e devolve um `HttpClient`
+com o cabeçalho `Authorization` pronto — sem ele, a *fallback policy* global responde 401 antes
+de qualquer controller.
 
 ---
 

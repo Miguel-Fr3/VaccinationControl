@@ -1,0 +1,119 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using FluentAssertions;
+using VaccinationControl.IntegrationTests.Support;
+
+namespace VaccinationControl.IntegrationTests
+{
+    /// <summary>
+    /// O GlobalExceptionHandler só existe na Api e traduz exceção em status HTTP. É o tipo de
+    /// comportamento que nenhum teste unitário da Application alcança.
+    /// </summary>
+    public class ErrorContractTests(ApiFactory factory) : IClassFixture<ApiFactory>
+    {
+        [Fact]
+        public async Task Erro_deve_usar_o_content_type_da_RFC_9457()
+        {
+            var client = await factory.AutenticadoAsync();
+
+            var resposta = await client.PostAsJsonAsync("/api/vaccines", new { name = "" });
+
+            resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            resposta.Content.Headers.ContentType!.MediaType
+                .Should().Be("application/problem+json");
+        }
+
+        [Fact]
+        public async Task Erro_de_validacao_deve_trazer_o_dicionario_de_campos()
+        {
+            // A serialização precisa usar o tipo concreto; como ProblemDetails, o dicionário
+            // Errors sumiria da resposta sem quebrar nada visivelmente.
+            var client = await factory.AutenticadoAsync();
+
+            var resposta = await client.PostAsJsonAsync("/api/vaccines", new { name = "" });
+
+            var corpo = await resposta.Content.ReadAsStringAsync();
+            using var json = JsonDocument.Parse(corpo);
+
+            json.RootElement.TryGetProperty("errors", out var errors).Should().BeTrue();
+            errors.TryGetProperty("Name", out _).Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Deve_agregar_erros_de_campos_diferentes_na_mesma_resposta()
+        {
+            var client = await factory.AutenticadoAsync();
+            var personId = await CadastrarPessoaAsync(client);
+
+            var resposta = await client.PostAsJsonAsync(
+                $"/api/people/{personId}/vaccinations",
+                new
+                {
+                    vaccineId = Guid.NewGuid(),
+                    vaccinationType = "Dose",
+                    doseNumber = 0,
+                    vaccinationDate = "2099-01-01"
+                });
+
+            var corpo = await resposta.Content.ReadAsStringAsync();
+            using var json = JsonDocument.Parse(corpo);
+
+            var errors = json.RootElement.GetProperty("errors");
+
+            errors.TryGetProperty("DoseNumber", out _).Should().BeTrue();
+            errors.TryGetProperty("VaccinationDate", out _).Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Conflito_deve_trazer_mensagem_de_negocio_no_detail()
+        {
+            var client = await factory.AutenticadoAsync();
+
+            await client.PostAsJsonAsync("/api/vaccines", new { name = "Conflitante" });
+            var repetida = await client.PostAsJsonAsync("/api/vaccines", new { name = "Conflitante" });
+
+            repetida.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+            var corpo = await repetida.Content.ReadAsStringAsync();
+            using var json = JsonDocument.Parse(corpo);
+
+            json.RootElement.GetProperty("detail").GetString()
+                .Should().Contain("Conflitante");
+        }
+
+        [Fact]
+        public async Task Identificador_malformado_na_rota_deve_responder_404()
+        {
+            // A constraint {id:guid} recusa antes de chegar ao controller.
+            var client = await factory.AutenticadoAsync();
+
+            var resposta = await client.GetAsync("/api/vaccines/nao-e-um-guid");
+
+            resposta.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        }
+
+        [Fact]
+        public async Task Identificador_vazio_deve_responder_400()
+        {
+            var client = await factory.AutenticadoAsync();
+
+            var resposta = await client.GetAsync($"/api/vaccines/{Guid.Empty}");
+
+            resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+
+        private static async Task<Guid> CadastrarPessoaAsync(HttpClient client)
+        {
+            var documento = Random.Shared.NextInt64(10000000000, 99999999999).ToString();
+
+            var resposta = await client.PostAsJsonAsync(
+                "/api/people",
+                new { name = "Maria Silva", document = documento });
+
+            var criada = await resposta.Content.ReadFromJsonAsync<JsonElement>(ApiClient.Json);
+
+            return criada.GetProperty("id").GetGuid();
+        }
+    }
+}

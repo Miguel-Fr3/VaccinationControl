@@ -6,7 +6,7 @@ using VaccinationControl.Domain.Entities;
 using VaccinationControl.Domain.Enums;
 using VaccinationControl.Domain.Exceptions;
 
-namespace VaccinationControl.UnitTests.Vaccinations
+namespace VaccinationControl.UnitTests.Vaccinations.Commands.RegisterVaccination
 {
     /// <summary>
     /// Cobre RN03 a RN08 — as regras que dependem do estado já gravado. Os repositórios são

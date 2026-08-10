@@ -1,7 +1,7 @@
 using FluentValidation.TestHelper;
 using VaccinationControl.Application.Vaccines.Commands.CreateVaccine;
 
-namespace VaccinationControl.UnitTests.Vaccines
+namespace VaccinationControl.UnitTests.Vaccines.Commands.CreateVaccine
 {
     public class CreateVaccineCommandValidatorTests
     {

@@ -5,7 +5,7 @@ using VaccinationControl.Application.Vaccines.Commands.CreateVaccine;
 using VaccinationControl.Domain.Entities;
 using VaccinationControl.Domain.Exceptions;
 
-namespace VaccinationControl.UnitTests.Vaccines
+namespace VaccinationControl.UnitTests.Vaccines.Commands.CreateVaccine
 {
     public class CreateVaccineCommandHandlerTests
     {

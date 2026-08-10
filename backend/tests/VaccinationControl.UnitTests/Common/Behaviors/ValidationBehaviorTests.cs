@@ -3,7 +3,7 @@ using FluentValidation;
 using MediatR;
 using VaccinationControl.Application.Common.Behaviors;
 
-namespace VaccinationControl.UnitTests.Behaviors
+namespace VaccinationControl.UnitTests.Common.Behaviors
 {
     /// <summary>
     /// O behavior é o que torna a validação automática: se ele parar de rodar, nenhum

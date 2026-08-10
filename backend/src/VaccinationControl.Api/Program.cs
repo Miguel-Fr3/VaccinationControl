@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using VaccinationControl.Api.Middleware;
@@ -9,6 +10,7 @@ using VaccinationControl.Api.Security;
 using VaccinationControl.Application;
 using VaccinationControl.Application.Common.Interfaces;
 using VaccinationControl.Infrastructure;
+using VaccinationControl.Infrastructure.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,10 +29,21 @@ builder.Services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException(
+// Leitura única das configurações de JWT: esta mesma instância assina os tokens, no
+// JwtTokenGenerator, e valida os recebidos, aqui. Ler a chave em dois pontos independentes
+// permitiria que divergissem — e o sintoma seria a API rejeitar o token que ela própria
+// emitiu, sem nenhum erro que apontasse a causa.
+var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
+    ?? new JwtSettings();
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Key))
+{
+    throw new InvalidOperationException(
         "A chave 'Jwt:Key' não foi configurada. Em desenvolvimento, defina com "
         + "'dotnet user-secrets set \"Jwt:Key\" \"<chave>\"'; em produção, por variável de ambiente.");
+}
+
+builder.Services.AddSingleton(Options.Create(jwtSettings));
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -46,9 +59,9 @@ builder.Services
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
             // Sem tolerância de relógio: o padrão de 5 minutos estende a validade do token.
             ClockSkew = TimeSpan.Zero
         };
