@@ -8,22 +8,15 @@ namespace VaccinationControl.Application.Common.Behaviors
     /// Roda os validators registrados para o request antes do handler. Com isso nenhum
     /// handler precisa validar entrada: se chegou até ele, o request já está bem formado.
     /// </summary>
-    public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    public class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators) : IPipelineBehavior<TRequest, TResponse>
         where TRequest : notnull
     {
-        private readonly IEnumerable<IValidator<TRequest>> _validators;
-
-        public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
-        {
-            _validators = validators;
-        }
-
         public async Task<TResponse> Handle(
             TRequest request,
             RequestHandlerDelegate<TResponse> next,
             CancellationToken cancellationToken)
         {
-            if (!_validators.Any())
+            if (!validators.Any())
             {
                 return await next();
             }
@@ -33,7 +26,7 @@ namespace VaccinationControl.Application.Common.Behaviors
 
             // Sequencial de propósito: um validator pode consultar o banco, e o DbContext
             // é scoped e não suporta duas operações simultâneas.
-            foreach (var validator in _validators)
+            foreach (var validator in validators)
             {
                 var result = await validator.ValidateAsync(context, cancellationToken);
 

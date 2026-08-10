@@ -7,15 +7,8 @@ namespace VaccinationControl.Api.Controllers
     [ApiController]
     [Route("api/people/{personId:guid}/vaccination-card")]
     [Produces("application/json")]
-    public class VaccinationCardsController : ControllerBase
+    public class VaccinationCardsController(ISender sender) : ControllerBase
     {
-        private readonly ISender _sender;
-
-        public VaccinationCardsController(ISender sender)
-        {
-            _sender = sender;
-        }
-
         /// <summary>
         /// Consulta o cartão de vacinação de uma pessoa, com as aplicações agrupadas por vacina.
         /// </summary>
@@ -29,7 +22,7 @@ namespace VaccinationControl.Api.Controllers
             Guid personId,
             CancellationToken cancellationToken)
         {
-            var card = await _sender.Send(new GetVaccinationCardQuery(personId), cancellationToken);
+            var card = await sender.Send(new GetVaccinationCardQuery(personId), cancellationToken);
 
             return Ok(card);
         }

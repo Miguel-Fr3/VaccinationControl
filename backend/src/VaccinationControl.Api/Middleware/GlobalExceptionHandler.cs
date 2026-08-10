@@ -9,16 +9,9 @@ namespace VaccinationControl.Api.Middleware
     /// Traduz as falhas previstas em respostas HTTP. É aqui que a distinção entre 400, 404
     /// e 409 acontece — o domínio e a Application não conhecem códigos de status.
     /// </summary>
-    public class GlobalExceptionHandler : IExceptionHandler
+    public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
     {
         private const string ProblemJsonContentType = "application/problem+json";
-
-        private readonly ILogger<GlobalExceptionHandler> _logger;
-
-        public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
-        {
-            _logger = logger;
-        }
 
         public async ValueTask<bool> TryHandleAsync(
             HttpContext httpContext,
@@ -28,6 +21,11 @@ namespace VaccinationControl.Api.Middleware
             var problemDetails = exception switch
             {
                 ValidationException validationException => BuildValidationProblem(validationException),
+
+                UnauthorizedException unauthorizedException => BuildProblem(
+                    StatusCodes.Status401Unauthorized,
+                    "Não autenticado",
+                    unauthorizedException.Message),
 
                 NotFoundException notFoundException => BuildProblem(
                     StatusCodes.Status404NotFound,
@@ -50,7 +48,7 @@ namespace VaccinationControl.Api.Middleware
             if (problemDetails is null)
             {
                 // Falha não prevista: registra e devolve o pipeline padrão, que responde 500.
-                _logger.LogError(
+                logger.LogError(
                     exception,
                     "Falha nao tratada ao processar {Method} {Path}.",
                     httpContext.Request.Method,

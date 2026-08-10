@@ -11,15 +11,8 @@ namespace VaccinationControl.Api.Controllers
     [ApiController]
     [Route("api/vaccines")]
     [Produces("application/json")]
-    public class VaccinesController : ControllerBase
+    public class VaccinesController(ISender sender) : ControllerBase
     {
-        private readonly ISender _sender;
-
-        public VaccinesController(ISender sender)
-        {
-            _sender = sender;
-        }
-
         /// <summary>
         /// Cadastra uma vacina.
         /// </summary>
@@ -31,7 +24,7 @@ namespace VaccinationControl.Api.Controllers
             [FromBody] CreateVaccineCommand command,
             CancellationToken cancellationToken)
         {
-            var vaccine = await _sender.Send(command, cancellationToken);
+            var vaccine = await sender.Send(command, cancellationToken);
 
             // Location resolvido pela própria action de consulta: nada de caminho literal,
             // e o header aponta para um recurso que realmente responde.
@@ -48,7 +41,7 @@ namespace VaccinationControl.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
         {
-            var vaccine = await _sender.Send(new GetVaccineByIdQuery(id), cancellationToken);
+            var vaccine = await sender.Send(new GetVaccineByIdQuery(id), cancellationToken);
 
             return Ok(vaccine);
         }
@@ -71,7 +64,7 @@ namespace VaccinationControl.Api.Controllers
         {
             var query = new GetVaccinesQuery(search, page, pageSize);
 
-            var vaccines = await _sender.Send(query, cancellationToken);
+            var vaccines = await sender.Send(query, cancellationToken);
 
             return Ok(vaccines);
         }

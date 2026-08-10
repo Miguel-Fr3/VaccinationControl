@@ -2,8 +2,8 @@
 
 Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vacinas, aplicações e histórico de vacinação.
 
-> **Estado atual:** as seis funcionalidades planejadas estão implementadas e funcionando de
-> ponta a ponta. Faltam a autenticação da API e os testes automatizados — veja
+> **Estado atual:** as seis funcionalidades estão implementadas, e a API exige
+> autenticação. Faltam os testes automatizados — veja
 > [Status e próximos passos](#status-e-próximos-passos).
 
 ## Tecnologias
@@ -49,7 +49,8 @@ Ainda não iniciado. A pasta `frontend/` existe, mas está vazia.
 | Registro de vacinação com validação de dose | Concluída |
 | Consulta do cartão de vacinação | Concluída |
 | Exclusão de registro do cartão | Concluída |
-| Autenticação JWT | Planejada |
+| Listagem de pessoas com busca e paginação | Concluída |
+| Autenticação JWT | Concluída |
 | Testes unitários e de integração | Planejada |
 | Frontend em React | Planejada |
 
@@ -154,9 +155,12 @@ Regras que dependem do banco (documento já cadastrado, dose duplicada) não cab
 validator, porque exigem consulta e resultam em `409`, não `400`. Elas ficam no handler e
 lançam exceções de domínio.
 
-Antes de persistir, o handler ainda valida a **entidade** com seu próprio validator
-(`IValidator<Vaccine>`), como rede de segurança: nenhuma entidade chega ao banco sem passar
-pelas suas regras, independentemente de qual caso de uso a criou.
+**Nenhum handler chama validator.** A validação acontece inteiramente no pipeline, antes dele
+— se o request chegou ao handler, já está bem formado. O handler cuida apenas do que depende
+do estado gravado.
+
+Cada caso de uso tem um único validator, ao lado do seu command ou query. São 13 no total,
+todos registrados automaticamente por `AddValidatorsFromAssembly`.
 
 ### Tratamento de erros
 
@@ -185,8 +189,92 @@ Documentação interativa disponível em desenvolvimento:
 | Scalar (UI) | `http://localhost:5201/scalar/v1` |
 | Documento OpenAPI | `http://localhost:5201/openapi/v1.json` |
 
-Os recursos de vacinas e pessoas estão implementados. O registro de vacinação, a consulta do
-cartão e a autenticação constam do plano e ainda não existem.
+### Autenticação
+
+**Todos os endpoints exigem token**, exceto os dois de `/api/auth`. A exigência é aplicada por
+uma *fallback policy* global — um controller novo já nasce protegido, sem depender de alguém
+lembrar de anotar `[Authorize]`.
+
+Envie o token no cabeçalho:
+
+```text
+Authorization: Bearer <token>
+```
+
+Sem token, ou com token expirado, a resposta é `401`.
+
+#### `POST /api/auth/register`
+
+Cadastra um usuário e já devolve o token — evita ter que chamar o login logo em seguida.
+
+```json
+{ "email": "admin@exemplo.com", "password": "senha12345" }
+```
+
+| HTTP | Quando |
+| --- | --- |
+| 201 | Usuário cadastrado |
+| 400 | E-mail inválido, ou senha com menos de 8 caracteres |
+| 409 | Já existe usuário com esse e-mail |
+
+#### `POST /api/auth/login`
+
+```json
+{ "email": "admin@exemplo.com", "password": "senha12345" }
+```
+
+| HTTP | Quando |
+| --- | --- |
+| 200 | Autenticado |
+| 400 | E-mail ou senha ausentes |
+| 401 | Credencial inválida |
+
+Ambos devolvem o mesmo corpo:
+
+```json
+{
+  "userId": "d2b32c2d-0970-4720-bd92-e3337ddc9089",
+  "email": "admin@exemplo.com",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresAtUtc": "2026-08-10T16:40:00Z"
+}
+```
+
+E-mail inexistente e senha errada devolvem **a mesma mensagem** — distinguir os dois
+permitiria descobrir quais e-mails estão cadastrados.
+
+##### Senha
+
+Nunca é gravada em claro. O hash usa o `PasswordHasher<T>` do ASP.NET Core, que aplica PBKDF2
+com salt aleatório por senha e embute os parâmetros no próprio hash — trocar o custo no futuro
+não invalida os hashes existentes.
+
+##### Auditoria automática
+
+Toda entidade gravada registra quem a criou ou alterou, a partir do `sub` do token:
+
+| Campo | Quando é preenchido |
+| --- | --- |
+| `CreatedBy` | na inserção |
+| `UpdatedBy` e `UpdatedAt` | na alteração |
+
+O preenchimento acontece no `SaveChangesAsync` do `AppDbContext`, não em cada handler — a
+origem do dado é sempre a mesma, e deixar isso a cargo dos handlers significaria esquecer em
+algum. Em requisições anônimas (o cadastro do primeiro usuário) o autor fica vazio.
+
+##### Chave de assinatura
+
+`Jwt:Issuer`, `Jwt:Audience` e `Jwt:ExpiresInMinutes` ficam no `appsettings.json`. A **chave
+não** — uma chave commitada fica no histórico do Git para sempre. Em desenvolvimento:
+
+```bash
+cd backend
+dotnet user-secrets set "Jwt:Key" "<chave com no mínimo 32 bytes>" \
+  --project src/VaccinationControl.Api
+```
+
+Em produção, use variável de ambiente. Sem a chave configurada a aplicação **não sobe**, com
+mensagem explicando como defini-la — falhar no startup é melhor que rodar com uma chave padrão.
 
 ### Vacinas
 
@@ -282,6 +370,36 @@ exatamente 11 caracteres.
   "document": "12345678901"
 }
 ```
+
+#### `GET /api/people`
+
+Lista as pessoas cadastradas, ordenadas por nome. Todos os parâmetros são opcionais — sem
+nenhum deles, devolve todas.
+
+| Parâmetro | Tipo | Descrição |
+| --- | --- | --- |
+| `search` | string | Filtra por trecho do **nome ou do documento** |
+| `page` | int | Página desejada, a partir de 1. Padrão 1 |
+| `pageSize` | int | Itens por página, de 1 a 100. Padrão 20 |
+
+Mesmo envelope `PagedResult` da listagem de vacinas:
+
+```json
+{
+  "items": [
+    { "id": "99ea408a-…", "name": "Joao Pedro", "document": "11122233399" }
+  ],
+  "page": 1,
+  "pageSize": 1,
+  "totalCount": 1,
+  "totalPages": 1
+}
+```
+
+| HTTP | Quando |
+| --- | --- |
+| 200 | Consulta realizada |
+| 400 | `page` menor que 1, `pageSize` fora de 1–100 ou `search` acima de 200 caracteres |
 
 #### `GET /api/people/{id}`
 
@@ -502,8 +620,17 @@ O `recordId` de cada dose é o identificador usado para remover aquele registro 
 ### Exemplos de chamada
 
 ```bash
+# 1. obter o token — sem ele, todo o resto responde 401
+TOKEN=$(curl -s -X POST http://localhost:5201/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@exemplo.com","password":"senha12345"}' \
+  | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+```
+
+```bash
 # cadastrar uma vacina
 curl -X POST http://localhost:5201/api/vaccines \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Hepatite B"}'
 

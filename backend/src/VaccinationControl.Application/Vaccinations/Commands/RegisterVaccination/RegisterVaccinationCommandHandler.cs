@@ -1,4 +1,3 @@
-using FluentValidation;
 using MediatR;
 using VaccinationControl.Application.Common.Extensions;
 using VaccinationControl.Application.Common.Interfaces;
@@ -8,37 +7,21 @@ using VaccinationControl.Domain.Exceptions;
 
 namespace VaccinationControl.Application.Vaccinations.Commands.RegisterVaccination
 {
-    public class RegisterVaccinationCommandHandler
+    public class RegisterVaccinationCommandHandler(
+        IPersonRepository personRepository,
+        IVaccineRepository vaccineRepository,
+        IVaccinationRecordRepository vaccinationRecordRepository,
+        IUnitOfWork unitOfWork)
         : IRequestHandler<RegisterVaccinationCommand, VaccinationRecordResponse>
     {
-        private readonly IPersonRepository _personRepository;
-        private readonly IVaccineRepository _vaccineRepository;
-        private readonly IVaccinationRecordRepository _vaccinationRecordRepository;
-        private readonly IValidator<VaccinationRecord> _vaccinationRecordValidator;
-        private readonly IUnitOfWork _unitOfWork;
-
-        public RegisterVaccinationCommandHandler(
-            IPersonRepository personRepository,
-            IVaccineRepository vaccineRepository,
-            IVaccinationRecordRepository vaccinationRecordRepository,
-            IValidator<VaccinationRecord> vaccinationRecordValidator,
-            IUnitOfWork unitOfWork)
-        {
-            _personRepository = personRepository;
-            _vaccineRepository = vaccineRepository;
-            _vaccinationRecordRepository = vaccinationRecordRepository;
-            _vaccinationRecordValidator = vaccinationRecordValidator;
-            _unitOfWork = unitOfWork;
-        }
-
         public async Task<VaccinationRecordResponse> Handle(
             RegisterVaccinationCommand request,
             CancellationToken cancellationToken)
         {
-            var person = await _personRepository.GetByIdAsync(request.PersonId, cancellationToken)
+            var person = await personRepository.GetByIdAsync(request.PersonId, cancellationToken)
                 ?? throw new NotFoundException(nameof(Person), request.PersonId);
 
-            var vaccine = await _vaccineRepository.GetByIdAsync(request.VaccineId, cancellationToken)
+            var vaccine = await vaccineRepository.GetByIdAsync(request.VaccineId, cancellationToken)
                 ?? throw new NotFoundException(nameof(Vaccine), request.VaccineId);
 
             var vaccinationRecord = new VaccinationRecord
@@ -50,10 +33,7 @@ namespace VaccinationControl.Application.Vaccinations.Commands.RegisterVaccinati
                 VaccinationDate = request.VaccinationDate
             };
 
-            // Rede de segurança, antes dos conflitos: entrada malformada é 400, não 409.
-            await _vaccinationRecordValidator.ValidateAndThrowAsync(vaccinationRecord, cancellationToken);
-
-            var registeredDoses = await _vaccinationRecordRepository.GetDosesAsync(
+            var registeredDoses = await vaccinationRecordRepository.GetDosesAsync(
                 person.Id,
                 vaccine.Id,
                 cancellationToken);
@@ -72,8 +52,8 @@ namespace VaccinationControl.Application.Vaccinations.Commands.RegisterVaccinati
             // Esta é a única que cruza os tipos: reforço pressupõe dose normal.
             EnsureBoosterFollowsInitialDose(registeredDoses, request, vaccine);
 
-            _vaccinationRecordRepository.Add(vaccinationRecord);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            vaccinationRecordRepository.Add(vaccinationRecord);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return new VaccinationRecordResponse(
                 vaccinationRecord.Id,

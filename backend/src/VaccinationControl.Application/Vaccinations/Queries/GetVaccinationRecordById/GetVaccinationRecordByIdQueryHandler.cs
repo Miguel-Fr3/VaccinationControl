@@ -5,22 +5,14 @@ using VaccinationControl.Domain.Exceptions;
 
 namespace VaccinationControl.Application.Vaccinations.Queries.GetVaccinationRecordById
 {
-    public class GetVaccinationRecordByIdQueryHandler
+    public class GetVaccinationRecordByIdQueryHandler(IVaccinationRecordRepository vaccinationRecordRepository)
         : IRequestHandler<GetVaccinationRecordByIdQuery, VaccinationRecordResponse>
     {
-        private readonly IVaccinationRecordRepository _vaccinationRecordRepository;
-
-        public GetVaccinationRecordByIdQueryHandler(
-            IVaccinationRecordRepository vaccinationRecordRepository)
-        {
-            _vaccinationRecordRepository = vaccinationRecordRepository;
-        }
-
         public async Task<VaccinationRecordResponse> Handle(
             GetVaccinationRecordByIdQuery request,
             CancellationToken cancellationToken)
         {
-            var record = await _vaccinationRecordRepository.GetByIdAsync(
+            var record = await vaccinationRecordRepository.GetByIdAsync(
                 request.PersonId,
                 request.RecordId,
                 cancellationToken)
