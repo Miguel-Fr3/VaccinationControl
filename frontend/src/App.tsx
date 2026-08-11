@@ -1,7 +1,7 @@
 import { Container, Typography } from '@mui/material';
 import { Route, Routes } from 'react-router-dom';
 
-function Inicio() {
+function Home() {
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
       <Typography variant="h1">Cartão de Vacinação</Typography>
@@ -12,7 +12,7 @@ function Inicio() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Inicio />} />
+      <Route path="/" element={<Home />} />
     </Routes>
   );
 }
