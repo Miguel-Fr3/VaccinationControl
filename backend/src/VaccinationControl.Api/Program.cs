@@ -25,6 +25,19 @@ builder.Services
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
+// A interface é servida pelo Vite em outra origem, então toda chamada dela é cross-origin.
+// As origens vêm da configuração porque mudam por ambiente — e não podem ser um curinga: a
+// sessão vai trafegar em cookie, e credenciais exigem origem nomeada.
+var corsSettings = builder.Configuration.GetSection(CorsSettings.SectionName).Get<CorsSettings>()
+    ?? new CorsSettings();
+
+builder.Services.AddCors(options =>
+    options.AddPolicy(CorsSettings.PolicyName, policy => policy
+        .WithOrigins(corsSettings.AllowedOrigins)
+        .AllowCredentials()
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
+
 // A identidade do token alimenta os campos de auditoria das entidades gravadas.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
@@ -93,7 +106,18 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference().AllowAnonymous();
 }
 
-app.UseHttpsRedirection();
+// Em desenvolvimento a interface conversa com o endereço HTTP (o VITE_API_URL aponta para
+// localhost:5201). Redirecionar para HTTPS ali quebraria o CORS: o navegador não segue
+// redirecionamento em requisição de verificação prévia, e o preflight morreria no 307.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+// Antes da autenticação de propósito: o preflight chega sem cookie e sem cabeçalho, e é
+// respondido aqui. Depois de UseAuthorization ele esbarraria na fallback policy, voltaria 401
+// e o navegador desistiria antes de fazer a requisição real.
+app.UseCors(CorsSettings.PolicyName);
 
 app.UseAuthentication();
 app.UseAuthorization();
