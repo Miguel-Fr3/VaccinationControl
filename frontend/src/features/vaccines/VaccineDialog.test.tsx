@@ -7,14 +7,14 @@ import { server } from '../../test/server';
 import { renderWithProviders } from '../../test/renderWithProviders';
 import { VaccineDialog } from './VaccineDialog';
 
-const rota = '*/api/vaccines';
+const route = '*/api/vaccines';
 
 describe('VaccineDialog', () => {
   it('leva o erro de validacao ao campo, apesar da chave em PascalCase', async () => {
     // A API devolve 'Name'; o campo do formulário é 'name'. Sem a normalização da primeira
     // letra o erro não encontra o campo e some da tela sem quebrar nada.
     server.use(
-      http.post(rota, () =>
+      http.post(route, () =>
         HttpResponse.json(
           {
             title: 'Requisição inválida',
@@ -39,10 +39,10 @@ describe('VaccineDialog', () => {
 
   it('mostra o conflito de nome repetido em alerta, sem fechar o dialogo', async () => {
     // 409 não traz dicionário de campos: a mensagem vai para o Alert e o que foi digitado fica.
-    const aoFechar = vi.fn();
+    const onClose = vi.fn();
 
     server.use(
-      http.post(rota, () =>
+      http.post(route, () =>
         HttpResponse.json(
           {
             title: 'Conflito com o estado atual',
@@ -54,7 +54,7 @@ describe('VaccineDialog', () => {
       ),
     );
 
-    renderWithProviders(<VaccineDialog open onClose={aoFechar} />);
+    renderWithProviders(<VaccineDialog open onClose={onClose} />);
 
     await userEvent.type(screen.getByLabelText(/nome/i), 'BCG');
     await userEvent.click(screen.getByRole('button', { name: /salvar/i }));
@@ -62,24 +62,24 @@ describe('VaccineDialog', () => {
     expect(
       await screen.findByText("Já existe uma vacina cadastrada com o nome 'BCG'."),
     ).toBeInTheDocument();
-    expect(aoFechar).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByLabelText(/nome/i)).toHaveValue('BCG');
   });
 
   it('fecha e limpa o formulario apos o cadastro', async () => {
-    const aoFechar = vi.fn();
+    const onClose = vi.fn();
 
     server.use(
-      http.post(rota, () => HttpResponse.json({ id: 'nova', name: 'Febre Amarela' }, { status: 201 })),
+      http.post(route, () => HttpResponse.json({ id: 'nova', name: 'Febre Amarela' }, { status: 201 })),
     );
 
-    renderWithProviders(<VaccineDialog open onClose={aoFechar} />);
+    renderWithProviders(<VaccineDialog open onClose={onClose} />);
 
     await userEvent.type(screen.getByLabelText(/nome/i), 'Febre Amarela');
     await userEvent.click(screen.getByRole('button', { name: /salvar/i }));
 
     await vi.waitFor(() => {
-      expect(aoFechar).toHaveBeenCalledOnce();
+      expect(onClose).toHaveBeenCalledOnce();
     });
     expect(screen.getByLabelText(/nome/i)).toHaveValue('');
   });

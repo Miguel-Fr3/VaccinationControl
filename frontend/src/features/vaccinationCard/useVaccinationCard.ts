@@ -1,7 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '../../api/client';
-import type { VaccinationCard } from '../../api/types';
+import type {
+  RegisterVaccinationRequest,
+  VaccinationCard,
+  VaccinationRecord,
+} from '../../api/types';
 
 export const vaccinationCardKey = 'vaccination-card';
 
@@ -23,4 +27,35 @@ export function useVaccinationCard(personId: string | undefined, enabled = true)
 /** Quantas aplicações o cartão tem ao todo, somando as de todas as vacinas. */
 export function countDoses(card: VaccinationCard | undefined): number {
   return card?.vaccines.reduce((total, vaccine) => total + vaccine.totalDoses, 0) ?? 0;
+}
+
+// Registra uma aplicação no cartão da pessoa e recarrega o cartão.
+export function useRegisterVaccination(personId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (body: RegisterVaccinationRequest) => {
+      const { data } = await api.post<VaccinationRecord>(
+        `/api/people/${personId}/vaccinations`,
+        body,
+      );
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [vaccinationCardKey, personId] });
+    },
+  });
+}
+
+// Remove uma aplicação do cartão da pessoa.
+export function useDeleteVaccinationRecord(personId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (recordId: string) =>
+      api.delete(`/api/people/${personId}/vaccinations/${recordId}`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [vaccinationCardKey, personId] });
+    },
+  });
 }

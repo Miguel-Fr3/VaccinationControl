@@ -13,7 +13,7 @@ import { Controller, useForm } from 'react-hook-form';
 
 import { applyValidationErrors, errorMessage } from '../../api/problemDetails';
 import type { CreatePersonRequest } from '../../api/types';
-import { formatCpf, stripCpf } from './cpf';
+import { formatCpf, stripCpf } from '../../format/cpf';
 import { useCreatePerson } from './usePeople';
 
 type PersonDialogProps = {
