@@ -2,10 +2,6 @@
 
 Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vacinas, aplicações e histórico de vacinação.
 
-> **Estado atual:** o backend está completo. O frontend foi iniciado — existe o projeto
-> React/Vite com tema e rotas, ainda sem as telas. Veja
-> [Status e próximos passos](#status-e-próximos-passos).
-
 ## Tecnologias
 
 ### Backend
@@ -28,33 +24,12 @@ Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vac
 * React Router
 * React Hook Form
 * Axios
+* Vitest, Testing Library e MSW (testes de componente)
 
 ### DevOps
 
 * GitHub Actions
 * Git
-
----
-
-## Status e próximos passos
-
-| Etapa | Situação |
-| --- | --- |
-| Estrutura em Clean Architecture (4 projetos) | Concluída |
-| Entidades de domínio e exceções | Concluída |
-| EF Core + SQLite, mappers e primeira migration | Concluída |
-| Pipeline de validação (MediatR + FluentValidation) | Concluída |
-| Tratamento global de exceções | Concluída |
-| Cadastro e consulta de vacinas | Concluída |
-| Cadastro e remoção de pessoas | Concluída |
-| Registro de vacinação com validação de dose | Concluída |
-| Consulta do cartão de vacinação | Concluída |
-| Exclusão de registro do cartão | Concluída |
-| Listagem de pessoas com busca e paginação | Concluída |
-| Autenticação JWT | Concluída |
-| Testes unitários | Concluída |
-| Testes de integração | Concluída |
-| Frontend em React | Em andamento |
 
 ---
 
@@ -161,7 +136,7 @@ lançam exceções de domínio.
 — se o request chegou ao handler, já está bem formado. O handler cuida apenas do que depende
 do estado gravado.
 
-Cada caso de uso tem um único validator, ao lado do seu command ou query. São 13 no total,
+Cada caso de uso tem um único validator, ao lado do seu command ou query.
 todos registrados automaticamente por `AddValidatorsFromAssembly`.
 
 ### Tratamento de erros
@@ -383,8 +358,9 @@ A resposta usa sempre o mesmo envelope, com ou sem paginação. Quando não há 
 
 #### `POST /api/people`
 
-Cadastra uma pessoa. O documento é o número de identificação único da pessoa e precisa ter
-exatamente 11 caracteres.
+Cadastra uma pessoa. O campo `document` é o **CPF**, sem máscara: exatamente 11 caracteres,
+e único entre as pessoas. As mensagens de erro chamam o campo de CPF, que é como a interface
+o rotula — a propriedade continua `document`, e é essa a chave no dicionário de `errors`.
 
 ```json
 { "name": "Maria Silva", "document": "12345678901" }
@@ -393,8 +369,8 @@ exatamente 11 caracteres.
 | HTTP | Quando |
 | --- | --- |
 | 201 | Pessoa cadastrada; `Location` aponta para o recurso |
-| 400 | Nome vazio ou acima de 200 caracteres; documento fora dos 11 caracteres |
-| 409 | Já existe pessoa com esse documento |
+| 400 | Nome vazio ou acima de 200 caracteres; CPF fora dos 11 caracteres |
+| 409 | Já existe pessoa com esse CPF |
 
 ```json
 {
@@ -411,7 +387,7 @@ nenhum deles, devolve todas.
 
 | Parâmetro | Tipo | Descrição |
 | --- | --- | --- |
-| `search` | string | Filtra por trecho do **nome ou do documento** |
+| `search` | string | Filtra por trecho do **nome ou do CPF**, que está gravado sem máscara |
 | `page` | int | Página desejada, a partir de 1. Padrão 1 |
 | `pageSize` | int | Itens por página, de 1 a 100. Padrão 20 |
 
@@ -749,15 +725,22 @@ VaccinationControl/
 ├── frontend/
 │   ├── public/
 │   ├── src/
+│   │   ├── api/                               cliente axios, tipos do contrato, ProblemDetails
+│   │   ├── auth/                              contexto de sessão e rota protegida
+│   │   ├── components/                        AppLayout: barra, navegação e saída
+│   │   ├── features/                          vaccines/ · people/ · vaccinationCard/ · auth/
+│   │   ├── format/                            cpf.ts e date.ts, usados por mais de uma feature
+│   │   ├── hooks/                             useDebouncedValue e useListQuery
+│   │   ├── test/                              servidor MSW e helper de render
 │   │   ├── App.tsx                            rotas
-│   │   ├── main.tsx                           providers: tema, query client, router
+│   │   ├── main.tsx                           providers: tema, query client, router, sessão
 │   │   ├── theme.ts                           tema do Material UI, locale ptBR
 │   │   └── index.css
 │   ├── .env.example                           VITE_API_URL
 │   ├── eslint.config.js
 │   ├── index.html
 │   ├── package.json
-│   └── vite.config.ts
+│   └── vite.config.ts                         build e configuração do Vitest
 │
 ├── .editorconfig
 ├── .gitignore
@@ -844,8 +827,8 @@ dotnet run --project backend/src/VaccinationControl.Api
 
 ## Executando o Frontend
 
-> O projeto existe e sobe, mas hoje há **uma única rota**, com uma tela de boas-vindas. As
-> telas de vacinas, pessoas e cartão entram nas próximas etapas.
+> A API precisa estar no ar em `http://localhost:5201`, e a origem `http://localhost:5173`
+> precisa constar em `Cors:AllowedOrigins` — é o padrão do `appsettings.json`.
 
 ```bash
 cd frontend
@@ -862,25 +845,44 @@ O `.env` guarda o endereço da API e **não é versionado** — o `.env.example`
 VITE_API_URL=http://localhost:5201
 ```
 
-### O que já está montado
-
-O `main.tsx` compõe os providers que as telas vão usar:
-
-| Camada | Papel |
+| Script | O que faz |
 | --- | --- |
-| `ThemeProvider` + `CssBaseline` | tema do Material UI, com a paleta do projeto e o locale `ptBR` |
-| `QueryClientProvider` | TanStack Query, com `retry: false` e sem *refetch* ao focar a janela |
-| `BrowserRouter` | roteamento |
+| `npm run dev` | servidor de desenvolvimento |
+| `npm run build` | `tsc -b` e depois `vite build` |
+| `npm run lint` | ESLint com verificação de tipos |
+| `npm test` | Vitest, uma execução |
+| `npm run test:watch` | Vitest em modo contínuo |
 
-A organização será **por feature**, espelhando a `Application/` do backend — mesma lógica de
-manter junto o que muda junto:
+O `build` roda o `tsc` **antes** do Vite de propósito: o esbuild apaga as anotações de tipo
+sem verificá-las, então sem essa etapa um erro de tipo passaria direto para o bundle.
+
+### Telas
+
+| Rota | Tela | Acesso |
+| --- | --- | --- |
+| `/login` | Entrar | público |
+| `/registrar` | Criar conta | público |
+| `/pessoas` | Lista de pessoas, com cadastro e exclusão | sessão |
+| `/pessoas/:personId/cartao` | Cartão de vacinação, com registro e remoção de dose | sessão |
+| `/vacinas` | Catálogo de vacinas, com busca, paginação e cadastro | sessão |
+
+A raiz redireciona para `/pessoas`. As rotas com sessão ficam atrás do `RequireSession`, que
+consulta `GET /api/auth/me` na montagem — sem isso, um recarregamento de página piscaria a
+tela de login antes do conteúdo.
+
+### Organização
+
+Por **feature**, espelhando a `Application/` do backend — mesma lógica de manter junto o que
+muda junto:
 
 ```text
 frontend/src/
 ├── api/          cliente axios, tipos do contrato e tradução de ProblemDetails
 ├── auth/         contexto de sessão e rota protegida
-├── features/     vaccines/ · people/ · vaccinationCard/
-├── components/
+├── components/   AppLayout
+├── features/     auth/ · vaccines/ · people/ · vaccinationCard/
+├── format/       cpf.ts e date.ts
+├── hooks/        useDebouncedValue e useListQuery
 └── theme.ts
 ```
 
@@ -921,7 +923,10 @@ apontam sempre para o mesmo arquivo.
 
 ## Testes
 
-Para executar todos os testes do backend:
+O projeto tem três suítes: unitários e de integração no backend, e testes de componente no
+frontend.
+
+Para executar todos os testes do backend, a partir de `backend/`:
 
 ```bash
 dotnet test
@@ -981,6 +986,7 @@ partir do token e tradução de exceção em status HTTP.
 | `ListingTests` | busca, paginação, caixa e escape de curinga — tudo no SQL de verdade |
 | `ErrorContractTests` | `application/problem+json`, dicionário de erros, rótulo em português |
 | `AuditTests` | `CreatedBy` vindo do token, cadastro anônimo sem autor, senha nunca em claro |
+| `OpenApiDocumentTests` | esquema de sessão no documento e o requisito só nas rotas protegidas |
 
 Aqui as pastas **não** espelham o `src/`: cada arquivo é um cenário que atravessa vários casos
 de uso, então agrupar por origem não ajudaria. O que fica separado é a infraestrutura, em
@@ -1012,6 +1018,30 @@ reenvia sozinho, como o navegador faria.
 O endereço base do cliente é `https://localhost`, e não HTTP. O cookie é `Secure`, e o
 `CookieContainer` do .NET — ao contrário do navegador — não abre exceção para `localhost`: sobre
 HTTP ele guardaria o cookie e nunca mais o enviaria, e todo teste autenticado responderia 401.
+
+### Testes de frontend
+
+**Vitest** com **Testing Library** para montar os componentes e **MSW** para simular a API.
+A partir de `frontend/`:
+
+```bash
+npm test
+npm run test:watch
+```
+
+O MSW é o que permite exercitar o caminho que mais quebra em silêncio: as respostas de erro.
+Cada teste declara os *handlers* do seu cenário, e o `onUnhandledRequest: 'error'` derruba o
+teste quando uma rota não simulada é chamada — em vez de deixar uma requisição real escapar
+para a máquina de quem roda a suíte.
+
+| Arquivo | O que cobre |
+| --- | --- |
+| `App.test.tsx` | registro das rotas, redirecionamentos e o desvio para o login sem sessão |
+| `VaccinesPage` · `VaccineDialog` | busca, paginação de servidor, estados vazio e de erro, cadastro |
+| `PeoplePage` · `PersonDialog` | máscara de CPF, envio sem máscara, busca por nome ou CPF |
+| `DeletePersonDialog` | aviso de cascata com a contagem de registros que serão perdidos |
+| `VaccinationCardPage` · `VaccinationDialog` | agrupamento por vacina, sugestões de dose, remoção |
+| `nextDose` · `cpf` · `date` | as funções puras — sequência por tipo, máscara e datas sem fuso |
 
 ---
 
@@ -1056,14 +1086,22 @@ feature/vaccination-registration
 O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em Pull Requests e em
 pushes para a `main`, e também pode ser disparado manualmente pela aba Actions.
 
-O job de backend executa, em Release:
+São dois jobs **independentes**, que rodam em paralelo — a falha de um não esconde o
+resultado do outro.
+
+O job de **backend** executa, em Release:
 
 * Restore das dependências, com cache dos pacotes NuGet
 * Build com `-warnaserror` — o projeto está em zero avisos e a pipeline mantém assim
 * Testes automatizados
 
-O job de frontend ainda não existe. Ele estava esperando o `package.json`, que já foi criado
-— entra em uma etapa própria, rodando `npm ci`, `npm run lint` e `npm run build`.
+O job de **frontend** executa, com Node 22 e cache de npm chaveado pelo `package-lock.json`:
+
+* `npm ci` — e não `install`: instala exatamente o que está no lock file e falha se ele
+  estiver fora de sincronia com o `package.json`
+* `npm run lint`
+* `npm run build`
+* `npm test`
 
 ---
 
