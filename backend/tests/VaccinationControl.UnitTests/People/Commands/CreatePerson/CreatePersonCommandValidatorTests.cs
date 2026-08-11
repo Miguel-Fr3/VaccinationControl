@@ -29,6 +29,18 @@ namespace VaccinationControl.UnitTests.People.Commands.CreatePerson
         }
 
         [Fact]
+        public void Mensagem_do_documento_deve_chamar_o_campo_de_CPF()
+        {
+            // O rótulo é o que o usuário lê, e a interface chama o campo de CPF. Divergir
+            // faria a mesma coisa aparecer com dois nomes na mesma tela.
+            var result = _validator.TestValidate(new CreatePersonCommand("Maria Silva", "123"));
+
+            result.ShouldHaveValidationErrorFor(command => command.Document)
+                .WithErrorMessage(
+                    "'CPF' deve ser maior ou igual a 11 caracteres. Você digitou 3 caracteres.");
+        }
+
+        [Fact]
         public void Deve_aceitar_documento_com_exatamente_11_caracteres()
         {
             var command = new CreatePersonCommand("Maria Silva", DocumentoValido);

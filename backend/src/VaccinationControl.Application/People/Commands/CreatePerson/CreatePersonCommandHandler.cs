@@ -24,7 +24,7 @@ namespace VaccinationControl.Application.People.Commands.CreatePerson
             if (await personRepository.ExistsByDocumentAsync(person.Document, cancellationToken))
             {
                 throw new ConflictException(
-                    $"Já existe uma pessoa cadastrada com o documento '{person.Document}'.");
+                    $"Já existe uma pessoa cadastrada com o CPF '{person.Document}'.");
             }
 
             personRepository.Add(person);
