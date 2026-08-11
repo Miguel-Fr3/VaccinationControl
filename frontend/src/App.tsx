@@ -4,6 +4,7 @@ import { RequireSession } from './auth/RequireSession';
 import { AppLayout } from './components/AppLayout';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
+import PeoplePage from './features/people/PeoplePage';
 import VaccinesPage from './features/vaccines/VaccinesPage';
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/vacinas" replace />} />
           <Route path="/vacinas" element={<VaccinesPage />} />
+          <Route path="/pessoas" element={<PeoplePage />} />
         </Route>
       </Route>
 

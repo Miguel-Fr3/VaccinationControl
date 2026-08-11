@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  IconButton,
   Paper,
   Stack,
   Table,
@@ -14,22 +15,32 @@ import {
   TablePagination,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 
 import { errorMessage } from '../../api/problemDetails';
+import type { Person } from '../../api/types';
 import { useListQuery } from '../../hooks/useListQuery';
-import { VaccineDialog } from './VaccineDialog';
-import { useVaccines } from './useVaccines';
+import { formatCpf, searchTerm } from './cpf';
+import { DeletePersonDialog } from './DeletePersonDialog';
+import { PersonDialog } from './PersonDialog';
+import { usePeople } from './usePeople';
 
-export default function VaccinesPage() {
+export default function PeoplePage() {
   const list = useListQuery();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [personToDelete, setPersonToDelete] = useState<Person | null>(null);
 
-  const { data, isPending, isFetching, isError, error } = useVaccines(list.query);
+  const { data, isPending, isFetching, isError, error } = usePeople({
+    ...list.query,
+    // O CPF está gravado sem máscara: um "123.456" digitado precisa chegar como "123456".
+    search: list.query.search ? searchTerm(list.query.search) : undefined,
+  });
 
-  // Com keepPreviousData o `data` da consulta anterior sobrevive ao erro. Exibir os dois
-  // mostraria uma tabela que não corresponde ao filtro digitado.
+  // Com keepPreviousData o `data` anterior sobrevive ao erro, e a tabela exibida não
+  // corresponderia ao filtro digitado.
   const showList = !isError && data;
 
   return (
@@ -39,7 +50,7 @@ export default function VaccinesPage() {
         spacing={2}
         sx={{ alignItems: 'center', justifyContent: 'space-between' }}
       >
-        <Typography variant="h1">Vacinas</Typography>
+        <Typography variant="h1">Pessoas</Typography>
 
         <Button
           variant="contained"
@@ -47,12 +58,12 @@ export default function VaccinesPage() {
             setDialogOpen(true);
           }}
         >
-          Nova vacina
+          Nova pessoa
         </Button>
       </Stack>
 
       <TextField
-        label="Buscar por nome"
+        label="Buscar por nome ou CPF"
         value={list.search}
         onChange={event => {
           list.setSearch(event.target.value);
@@ -71,27 +82,41 @@ export default function VaccinesPage() {
       {showList && data.items.length === 0 && (
         <Alert severity="info">
           {list.query.search
-            ? `Nenhuma vacina encontrada para "${list.query.search}".`
-            : 'Nenhuma vacina cadastrada ainda. Comece cadastrando a primeira.'}
+            ? `Nenhuma pessoa encontrada para "${list.query.search}".`
+            : 'Nenhuma pessoa cadastrada ainda. Comece cadastrando a primeira.'}
         </Alert>
       )}
 
       {showList && data.items.length > 0 && (
-        // Enquanto a próxima página carrega, a atual continua visível — esmaecida, para
-        // não passar por dado atualizado.
         <Paper sx={{ opacity: isFetching ? 0.6 : 1, transition: 'opacity 150ms' }}>
           <TableContainer>
             <Table>
               <TableHead>
                 <TableRow>
                   <TableCell>Nome</TableCell>
+                  <TableCell>CPF</TableCell>
+                  <TableCell align="right">Ações</TableCell>
                 </TableRow>
               </TableHead>
 
               <TableBody>
-                {data.items.map(vaccine => (
-                  <TableRow key={vaccine.id} hover>
-                    <TableCell>{vaccine.name}</TableCell>
+                {data.items.map(person => (
+                  <TableRow key={person.id} hover>
+                    <TableCell>{person.name}</TableCell>
+                    <TableCell>{formatCpf(person.document)}</TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Excluir">
+                        <IconButton
+                          color="error"
+                          aria-label={`Excluir ${person.name}`}
+                          onClick={() => {
+                            setPersonToDelete(person);
+                          }}
+                        >
+                          <DeleteOutlinedIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -101,7 +126,6 @@ export default function VaccinesPage() {
           <TablePagination
             component="div"
             count={data.totalCount}
-            // A API conta as páginas a partir de 1; a tabela do MUI, a partir de 0.
             page={list.page - 1}
             onPageChange={(_, nextPage) => {
               list.setPage(nextPage + 1);
@@ -115,12 +139,21 @@ export default function VaccinesPage() {
         </Paper>
       )}
 
-      <VaccineDialog
+      <PersonDialog
         open={dialogOpen}
         onClose={() => {
           setDialogOpen(false);
         }}
       />
+
+      {personToDelete && (
+        <DeletePersonDialog
+          person={personToDelete}
+          onClose={() => {
+            setPersonToDelete(null);
+          }}
+        />
+      )}
     </Stack>
   );
 }

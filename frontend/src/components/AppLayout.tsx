@@ -21,6 +21,9 @@ export function AppLayout() {
             <Button color="inherit" component={NavLink} to="/vacinas">
               Vacinas
             </Button>
+            <Button color="inherit" component={NavLink} to="/pessoas">
+              Pessoas
+            </Button>
           </Stack>
 
           <Typography variant="body2" sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
