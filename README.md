@@ -2,12 +2,13 @@
 
 Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vacinas, aplicações e histórico de vacinação.
 
-> **Estado atual:** o backend está completo. Resta o frontend — veja
+> **Estado atual:** o backend está completo. O frontend foi iniciado — existe o projeto
+> React/Vite com tema e rotas, ainda sem as telas. Veja
 > [Status e próximos passos](#status-e-próximos-passos).
 
 ## Tecnologias
 
-### Backend — em uso
+### Backend
 
 * .NET 10
 * ASP.NET Core
@@ -18,13 +19,14 @@ Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vac
 * xUnit, FluentAssertions e NSubstitute
 * Scalar (documentação da API)
 
-### Frontend — planejado
+### Frontend
 
-Ainda não iniciado. A pasta `frontend/` existe, mas está vazia.
-
-* React
-* TypeScript
+* React 19 + TypeScript
 * Vite
+* Material UI
+* TanStack Query (estado de servidor)
+* React Router
+* React Hook Form
 * Axios
 
 ### DevOps
@@ -52,7 +54,7 @@ Ainda não iniciado. A pasta `frontend/` existe, mas está vazia.
 | Autenticação JWT | Concluída |
 | Testes unitários | Concluída |
 | Testes de integração | Concluída |
-| Frontend em React | Planejada |
+| Frontend em React | Em andamento |
 
 ---
 
@@ -716,7 +718,18 @@ VaccinationControl/
 │   │
 │   └── VaccinationControl.slnx
 │
-├── frontend/                                  vazia; ainda não iniciado
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── App.tsx                            rotas
+│   │   ├── main.tsx                           providers: tema, query client, router
+│   │   ├── theme.ts                           tema do Material UI, locale ptBR
+│   │   └── index.css
+│   ├── .env.example                           VITE_API_URL
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.ts
 │
 ├── .editorconfig
 ├── .gitignore
@@ -745,7 +758,7 @@ aparecer no corpo documentado pelo OpenAPI.
 
 ## Pré-requisitos
 
-Para o backend, que é o que existe hoje:
+Backend:
 
 * .NET 10 SDK
 * Git
@@ -755,7 +768,9 @@ Para o backend, que é o que existe hoje:
 dotnet tool install --global dotnet-ef
 ```
 
-Node.js e npm entram quando o frontend for iniciado.
+Frontend:
+
+* Node.js 20.19+ (ou 22.12+) e npm — a faixa exigida pelo Vite 7
 
 ---
 
@@ -801,13 +816,44 @@ dotnet run --project backend/src/VaccinationControl.Api
 
 ## Executando o Frontend
 
-> Ainda não implementado. A pasta `frontend/` está vazia; os comandos abaixo passam a valer
-> quando o projeto React/Vite for criado.
+> O projeto existe e sobe, mas hoje há **uma única rota**, com uma tela de boas-vindas. As
+> telas de vacinas, pessoas e cartão entram nas próximas etapas.
 
 ```bash
 cd frontend
 npm install
+cp .env.example .env
 npm run dev
+```
+
+A interface sobe em `http://localhost:5173`.
+
+O `.env` guarda o endereço da API e **não é versionado** — o `.env.example` é o modelo:
+
+```text
+VITE_API_URL=http://localhost:5201
+```
+
+### O que já está montado
+
+O `main.tsx` compõe os providers que as telas vão usar:
+
+| Camada | Papel |
+| --- | --- |
+| `ThemeProvider` + `CssBaseline` | tema do Material UI, com a paleta do projeto e o locale `ptBR` |
+| `QueryClientProvider` | TanStack Query, com `retry: false` e sem *refetch* ao focar a janela |
+| `BrowserRouter` | roteamento |
+
+A organização será **por feature**, espelhando a `Application/` do backend — mesma lógica de
+manter junto o que muda junto:
+
+```text
+frontend/src/
+├── api/          cliente axios, tipos do contrato e tradução de ProblemDetails
+├── auth/         contexto de sessão e rota protegida
+├── features/     vaccines/ · people/ · vaccinationCard/
+├── components/
+└── theme.ts
 ```
 
 ---
@@ -981,8 +1027,8 @@ O job de backend executa, em Release:
 * Build com `-warnaserror` — o projeto está em zero avisos e a pipeline mantém assim
 * Testes automatizados
 
-O job de frontend será adicionado quando `frontend/` tiver um `package.json`; hoje um
-`npm ci` falharia e deixaria a pipeline vermelha sem haver nada errado no projeto.
+O job de frontend ainda não existe. Ele estava esperando o `package.json`, que já foi criado
+— entra em uma etapa própria, rodando `npm ci`, `npm run lint` e `npm run build`.
 
 ---
 
