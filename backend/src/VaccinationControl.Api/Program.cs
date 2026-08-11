@@ -136,8 +136,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
-// Torna o host visível para o WebApplicationFactory dos testes de integração.
-public partial class Program
-{
-}
