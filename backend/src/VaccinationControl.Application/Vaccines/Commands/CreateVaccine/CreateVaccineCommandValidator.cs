@@ -8,7 +8,8 @@ namespace VaccinationControl.Application.Vaccines.Commands.CreateVaccine
         {
             RuleFor(command => command.Name)
                 .NotEmpty()
-                .MaximumLength(200);
+                .MaximumLength(200)
+                .WithName("Nome");
         }
     }
 }

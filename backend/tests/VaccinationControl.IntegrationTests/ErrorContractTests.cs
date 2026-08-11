@@ -27,8 +27,9 @@ namespace VaccinationControl.IntegrationTests
         [Fact]
         public async Task Erro_de_validacao_deve_trazer_o_dicionario_de_campos()
         {
-            // A serialização precisa usar o tipo concreto; como ProblemDetails, o dicionário
-            // Errors sumiria da resposta sem quebrar nada visivelmente.
+            // O dicionário de campos é o que permite ao cliente exibir a mensagem de erro
+            // no campo correto do formulário. Sem ele, o cliente só poderia exibir a mensagem
+            // em um lugar genérico, sem associá-la a um campo específico.
             var client = await factory.AutenticadoAsync();
 
             var resposta = await client.PostAsJsonAsync("/api/vaccines", new { name = "" });
@@ -38,6 +39,43 @@ namespace VaccinationControl.IntegrationTests
 
             json.RootElement.TryGetProperty("errors", out var errors).Should().BeTrue();
             errors.TryGetProperty("Name", out _).Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Mensagem_de_validacao_deve_usar_o_rotulo_em_portugues()
+        {
+            var client = await factory.AutenticadoAsync();
+
+            var resposta = await client.PostAsJsonAsync("/api/vaccines", new { name = "" });
+
+            var corpo = await resposta.Content.ReadAsStringAsync();
+            using var json = JsonDocument.Parse(corpo);
+
+            // O FluentValidation permite customizar o rótulo do campo, mas não permite customizar a mensagem de erro.
+            var mensagem = json.RootElement
+                .GetProperty("errors")
+                .GetProperty("Name")[0]
+                .GetString();
+
+            mensagem.Should().Contain("Nome").And.NotContain("'Name'");
+        }
+
+        [Fact]
+        public async Task Mensagem_de_validacao_nao_deve_depender_da_cultura_do_processo()
+        {
+            var client = await factory.AutenticadoAsync();
+
+            var resposta = await client.PostAsJsonAsync("/api/vaccines", new { name = "" });
+
+            var corpo = await resposta.Content.ReadAsStringAsync();
+            using var json = JsonDocument.Parse(corpo);
+
+            var mensagem = json.RootElement
+                .GetProperty("errors")
+                .GetProperty("Name")[0]
+                .GetString();
+
+            mensagem.Should().NotContainEquivalentOf("must");
         }
 
         [Fact]

@@ -12,21 +12,26 @@ namespace VaccinationControl.Application.Vaccinations.Commands.RegisterVaccinati
         public RegisterVaccinationCommandValidator()
         {
             RuleFor(command => command.PersonId)
-                .NotEmpty();
+                .NotEmpty()
+                .WithName("Id da pessoa");
 
             RuleFor(command => command.VaccineId)
-                .NotEmpty();
+                .NotEmpty()
+                .WithName("Id da vacina");
 
             RuleFor(command => command.VaccinationType)
-                .IsInEnum();
+                .IsInEnum()
+                .WithName("Tipo de aplicação");
 
             // A dose precisa ser positiva.
             RuleFor(command => command.DoseNumber)
-                .GreaterThan(0);
+                .GreaterThan(0)
+                .WithName("Número da dose");
 
             // Não é possível registrar uma aplicação futura.
             RuleFor(command => command.VaccinationDate)
-                .LessThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow));
+                .LessThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow))
+                .WithName("Data de aplicação");
         }
     }
 }

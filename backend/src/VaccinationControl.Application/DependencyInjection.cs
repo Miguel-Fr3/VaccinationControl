@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,13 +14,17 @@ namespace VaccinationControl.Application
 
             services.AddMediatR(configuration =>
             {
+                // Registra todos os handlers do MediatR no assembly da aplicação
                 configuration.RegisterServicesFromAssembly(applicationAssembly);
 
                 // Validação roda no pipeline, antes de qualquer handler.
                 configuration.AddOpenBehavior(typeof(ValidationBehavior<,>));
             });
-
+            // Registra todos os validadores do FluentValidation no assembly da aplicação
             services.AddValidatorsFromAssembly(applicationAssembly);
+
+            // Configura a cultura padrão do FluentValidation para pt-BR
+            ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("pt-BR");
 
             return services;
         }

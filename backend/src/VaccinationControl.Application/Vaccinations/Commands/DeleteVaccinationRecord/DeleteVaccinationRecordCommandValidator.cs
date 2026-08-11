@@ -9,10 +9,12 @@ namespace VaccinationControl.Application.Vaccinations.Commands.DeleteVaccination
         {
             // Garante que o Id da pessoa não seja nulo ou vazio
             RuleFor(command => command.PersonId)
-                .NotEmpty();
+                .NotEmpty()
+                .WithName("Id da pessoa");
 
             RuleFor(command => command.RecordId)
-                .NotEmpty();
+                .NotEmpty()
+                .WithName("Id do registro");
         }
     }
 }

@@ -8,7 +8,8 @@ namespace VaccinationControl.Application.Vaccines.Queries.GetVaccineById
         {
             // A rota já garante o formato Guid; aqui barramos o Guid vazio.
             RuleFor(query => query.Id)
-                .NotEmpty();
+                .NotEmpty()
+                .WithName("Id da vacina");
         }
     }
 }

@@ -8,7 +8,8 @@ namespace VaccinationControl.Application.People.Commands.DeletePerson
         {
             // Garante que o Id da pessoa não seja nulo ou vazio
             RuleFor(command => command.Id)
-                .NotEmpty();
+                .NotEmpty()
+                .WithName("Id da pessoa");
         }
     }
 }
