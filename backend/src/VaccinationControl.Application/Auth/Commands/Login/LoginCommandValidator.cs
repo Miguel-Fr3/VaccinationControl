@@ -6,12 +6,13 @@ namespace VaccinationControl.Application.Auth.Commands.Login
     {
         public LoginCommandValidator()
         {
-            
             RuleFor(command => command.Email)
-                .NotEmpty();
+                .NotEmpty()
+                .WithName("E-mail");
 
             RuleFor(command => command.Password)
-                .NotEmpty();
+                .NotEmpty()
+                .WithName("Senha");
         }
     }
 }

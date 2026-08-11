@@ -9,10 +9,12 @@ namespace VaccinationControl.Application.Vaccinations.Queries.GetVaccinationReco
         {
             // Garante que o Id da pessoa não seja nulo ou vazio
             RuleFor(query => query.PersonId)
-                .NotEmpty();
+                .NotEmpty()
+                .WithName("Id da pessoa");
 
             RuleFor(query => query.RecordId)
-                .NotEmpty();
+                .NotEmpty()
+                .WithName("Id do registro");
         }
     }
 }

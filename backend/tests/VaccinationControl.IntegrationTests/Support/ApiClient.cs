@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -6,9 +5,8 @@ using System.Text.Json.Serialization;
 namespace VaccinationControl.IntegrationTests.Support
 {
     /// <summary>
-    /// Encapsula o que todo teste precisa antes de chegar no que quer verificar: obter um
-    /// token e mandá-lo em cada requisição. Sem isto, a fallback policy global responde 401
-    /// antes de qualquer controller.
+    /// Encapsula o que todo teste precisa antes de chegar no que quer verificar: abrir uma
+    /// sessão. Sem isto, a fallback policy global responde 401 antes de qualquer controller.
     /// </summary>
     public static class ApiClient
     {
@@ -18,8 +16,10 @@ namespace VaccinationControl.IntegrationTests.Support
         };
 
         /// <summary>
-        /// Cadastra um usuário novo e devolve um cliente já autenticado. O e-mail é único por
-        /// chamada para que testes na mesma classe não colidam no índice único.
+        /// Cadastra um usuário novo e devolve um cliente com a sessão aberta. Não há token a
+        /// manipular: o HttpClient do WebApplicationFactory guarda o cookie da resposta e o
+        /// reenvia sozinho, do mesmo jeito que o navegador faria. O e-mail é único por chamada
+        /// para que testes na mesma classe não colidam no índice único.
         /// </summary>
         public static async Task<HttpClient> AutenticadoAsync(this ApiFactory factory)
         {
@@ -31,14 +31,9 @@ namespace VaccinationControl.IntegrationTests.Support
 
             resposta.EnsureSuccessStatusCode();
 
-            var autenticacao = await resposta.Content.ReadFromJsonAsync<AutenticacaoResponse>(Json);
-
-            client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", autenticacao!.Token);
-
             return client;
         }
 
-        public record AutenticacaoResponse(Guid UserId, string Email, string Token, DateTime ExpiresAtUtc);
+        public record SessaoResponse(Guid UserId, string Email);
     }
 }

@@ -2,12 +2,13 @@
 
 Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vacinas, aplicações e histórico de vacinação.
 
-> **Estado atual:** o backend está completo. Resta o frontend — veja
+> **Estado atual:** o backend está completo. O frontend foi iniciado — existe o projeto
+> React/Vite com tema e rotas, ainda sem as telas. Veja
 > [Status e próximos passos](#status-e-próximos-passos).
 
 ## Tecnologias
 
-### Backend — em uso
+### Backend
 
 * .NET 10
 * ASP.NET Core
@@ -18,13 +19,14 @@ Sistema para gerenciamento de vacinação, permitindo o controle de pessoas, vac
 * xUnit, FluentAssertions e NSubstitute
 * Scalar (documentação da API)
 
-### Frontend — planejado
+### Frontend
 
-Ainda não iniciado. A pasta `frontend/` existe, mas está vazia.
-
-* React
-* TypeScript
+* React 19 + TypeScript
 * Vite
+* Material UI
+* TanStack Query (estado de servidor)
+* React Router
+* React Hook Form
 * Axios
 
 ### DevOps
@@ -52,7 +54,7 @@ Ainda não iniciado. A pasta `frontend/` existe, mas está vazia.
 | Autenticação JWT | Concluída |
 | Testes unitários | Concluída |
 | Testes de integração | Concluída |
-| Frontend em React | Planejada |
+| Frontend em React | Em andamento |
 
 ---
 
@@ -191,21 +193,25 @@ Documentação interativa disponível em desenvolvimento:
 
 ### Autenticação
 
-**Todos os endpoints exigem token**, exceto os dois de `/api/auth`. A exigência é aplicada por
-uma *fallback policy* global — um controller novo já nasce protegido, sem depender de alguém
-lembrar de anotar `[Authorize]`.
+**Todos os endpoints exigem sessão**, exceto `register`, `login` e `logout`. A exigência é
+aplicada por uma *fallback policy* global — um controller novo já nasce protegido, sem depender
+de alguém lembrar de anotar `[Authorize]`.
 
-Envie o token no cabeçalho:
+O token **não aparece em nenhuma resposta**: o cadastro e o login o gravam no cookie
+`vaccination-control-auth`, marcado `HttpOnly`, `Secure`, `SameSite=Lax` e com validade igual à
+do token. É o navegador que o carrega dali em diante, e o JavaScript não tem acesso a ele — um
+script injetado por XSS não consegue ler o que não pode ler.
 
 ```text
-Authorization: Bearer <token>
+Cookie: vaccination-control-auth=<token>
 ```
 
-Sem token, ou com token expirado, a resposta é `401`.
+Sem cookie, ou com token expirado, a resposta é `401`. O cabeçalho `Authorization: Bearer`
+continua sendo aceito para quem não é navegador, mas o cookie tem precedência quando ambos vêm.
 
 #### `POST /api/auth/register`
 
-Cadastra um usuário e já devolve o token — evita ter que chamar o login logo em seguida.
+Cadastra um usuário e já abre a sessão — evita ter que chamar o login logo em seguida.
 
 ```json
 { "email": "admin@exemplo.com", "password": "senha12345" }
@@ -229,19 +235,41 @@ Cadastra um usuário e já devolve o token — evita ter que chamar o login logo
 | 400 | E-mail ou senha ausentes |
 | 401 | Credencial inválida |
 
-Ambos devolvem o mesmo corpo:
+Ambos devolvem o mesmo corpo, e o `Set-Cookie` com o token:
 
 ```json
 {
   "userId": "d2b32c2d-0970-4720-bd92-e3337ddc9089",
-  "email": "admin@exemplo.com",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expiresAtUtc": "2026-08-10T16:40:00Z"
+  "email": "admin@exemplo.com"
 }
 ```
 
 E-mail inexistente e senha errada devolvem **a mesma mensagem** — distinguir os dois
 permitiria descobrir quais e-mails estão cadastrados.
+
+#### `POST /api/auth/logout`
+
+Apaga o cookie da sessão. Responde `204` sempre, inclusive sem sessão: quem chega com o cookie
+já vencido continua precisando que ele seja apagado.
+
+Precisa existir no servidor — apagar um cookie `HttpOnly` é impossível pelo JavaScript.
+
+#### `GET /api/auth/me`
+
+Devolve quem está autenticado na sessão corrente. É como a interface descobre se há sessão: o
+cookie é `HttpOnly`, então não há nada no navegador que o JavaScript possa inspecionar.
+
+| HTTP | Quando |
+| --- | --- |
+| 200 | Sessão válida |
+| 401 | Sem sessão, sessão expirada, ou usuário que não existe mais |
+
+```json
+{
+  "userId": "d2b32c2d-0970-4720-bd92-e3337ddc9089",
+  "email": "admin@exemplo.com"
+}
+```
 
 ##### Senha
 
@@ -625,17 +653,19 @@ O `recordId` de cada dose é o identificador usado para remover aquele registro 
 ### Exemplos de chamada
 
 ```bash
-# 1. obter o token — sem ele, todo o resto responde 401
-TOKEN=$(curl -s -X POST http://localhost:5201/api/auth/login \
+# 1. abrir a sessão — sem ela, todo o resto responde 401
+#    o token vem no cookie, então basta guardar o cookie jar e reenviá-lo com -b
+curl -s -c cookies.txt -X POST http://localhost:5201/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@exemplo.com","password":"senha12345"}' \
-  | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+  -d '{"email":"admin@exemplo.com","password":"senha12345"}'
 ```
+
+Os comandos abaixo omitem o `-b cookies.txt` por brevidade; sem ele, a resposta é `401`.
 
 ```bash
 # cadastrar uma vacina
 curl -X POST http://localhost:5201/api/vaccines \
-  -H "Authorization: Bearer $TOKEN" \
+  -b cookies.txt \
   -H "Content-Type: application/json" \
   -d '{"name":"Hepatite B"}'
 
@@ -716,7 +746,18 @@ VaccinationControl/
 │   │
 │   └── VaccinationControl.slnx
 │
-├── frontend/                                  vazia; ainda não iniciado
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── App.tsx                            rotas
+│   │   ├── main.tsx                           providers: tema, query client, router
+│   │   ├── theme.ts                           tema do Material UI, locale ptBR
+│   │   └── index.css
+│   ├── .env.example                           VITE_API_URL
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.ts
 │
 ├── .editorconfig
 ├── .gitignore
@@ -745,7 +786,7 @@ aparecer no corpo documentado pelo OpenAPI.
 
 ## Pré-requisitos
 
-Para o backend, que é o que existe hoje:
+Backend:
 
 * .NET 10 SDK
 * Git
@@ -755,7 +796,9 @@ Para o backend, que é o que existe hoje:
 dotnet tool install --global dotnet-ef
 ```
 
-Node.js e npm entram quando o frontend for iniciado.
+Frontend:
+
+* Node.js 20.19+ (ou 22.12+) e npm — a faixa exigida pelo Vite 7
 
 ---
 
@@ -801,13 +844,44 @@ dotnet run --project backend/src/VaccinationControl.Api
 
 ## Executando o Frontend
 
-> Ainda não implementado. A pasta `frontend/` está vazia; os comandos abaixo passam a valer
-> quando o projeto React/Vite for criado.
+> O projeto existe e sobe, mas hoje há **uma única rota**, com uma tela de boas-vindas. As
+> telas de vacinas, pessoas e cartão entram nas próximas etapas.
 
 ```bash
 cd frontend
 npm install
+cp .env.example .env
 npm run dev
+```
+
+A interface sobe em `http://localhost:5173`.
+
+O `.env` guarda o endereço da API e **não é versionado** — o `.env.example` é o modelo:
+
+```text
+VITE_API_URL=http://localhost:5201
+```
+
+### O que já está montado
+
+O `main.tsx` compõe os providers que as telas vão usar:
+
+| Camada | Papel |
+| --- | --- |
+| `ThemeProvider` + `CssBaseline` | tema do Material UI, com a paleta do projeto e o locale `ptBR` |
+| `QueryClientProvider` | TanStack Query, com `retry: false` e sem *refetch* ao focar a janela |
+| `BrowserRouter` | roteamento |
+
+A organização será **por feature**, espelhando a `Application/` do backend — mesma lógica de
+manter junto o que muda junto:
+
+```text
+frontend/src/
+├── api/          cliente axios, tipos do contrato e tradução de ProblemDetails
+├── auth/         contexto de sessão e rota protegida
+├── features/     vaccines/ · people/ · vaccinationCard/
+├── components/
+└── theme.ts
 ```
 
 ---
@@ -901,9 +975,11 @@ partir do token e tradução de exceção em status HTTP.
 | Arquivo | O que cobre |
 | --- | --- |
 | `VaccinationFlowTests` | fluxo de ponta a ponta, RN03 a RN08 pela API, cascata da remoção |
-| `AuthenticationTests` | 401 sem token, documentação anônima, cadastro e login |
+| `AuthenticationTests` | 401 sem sessão, documentação anônima, cadastro e login |
+| `SessionCookieTests` | marcas do cookie, ausência do token no corpo, `me` e `logout` |
+| `CorsTests` | preflight liberado, credenciais permitidas, origem desconhecida recusada |
 | `ListingTests` | busca, paginação, caixa e escape de curinga — tudo no SQL de verdade |
-| `ErrorContractTests` | `application/problem+json`, dicionário de erros, agregação de campos |
+| `ErrorContractTests` | `application/problem+json`, dicionário de erros, rótulo em português |
 | `AuditTests` | `CreatedBy` vindo do token, cadastro anônimo sem autor, senha nunca em claro |
 
 Aqui as pastas **não** espelham o `src/`: cada arquivo é um cenário que atravessa vários casos
@@ -929,8 +1005,13 @@ configuração de JWT ao montar o builder, antes de qualquer fonte que a factory
 uma chave que chegue tarde simplesmente não é usada.
 
 O `ApiClient.AutenticadoAsync` cadastra um usuário com e-mail único e devolve um `HttpClient`
-com o cabeçalho `Authorization` pronto — sem ele, a *fallback policy* global responde 401 antes
-de qualquer controller.
+com a sessão aberta — sem ele, a *fallback policy* global responde 401 antes de qualquer
+controller. Não há token a manipular: o `HttpClient` da factory guarda o cookie da resposta e o
+reenvia sozinho, como o navegador faria.
+
+O endereço base do cliente é `https://localhost`, e não HTTP. O cookie é `Secure`, e o
+`CookieContainer` do .NET — ao contrário do navegador — não abre exceção para `localhost`: sobre
+HTTP ele guardaria o cookie e nunca mais o enviaria, e todo teste autenticado responderia 401.
 
 ---
 
@@ -981,8 +1062,8 @@ O job de backend executa, em Release:
 * Build com `-warnaserror` — o projeto está em zero avisos e a pipeline mantém assim
 * Testes automatizados
 
-O job de frontend será adicionado quando `frontend/` tiver um `package.json`; hoje um
-`npm ci` falharia e deixaria a pipeline vermelha sem haver nada errado no projeto.
+O job de frontend ainda não existe. Ele estava esperando o `package.json`, que já foi criado
+— entra em uma etapa própria, rodando `npm ci`, `npm run lint` e `npm run build`.
 
 ---
 

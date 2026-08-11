@@ -8,7 +8,8 @@ namespace VaccinationControl.Application.Vaccinations.Queries.GetVaccinationCard
         {
             // Garante que o Id da pessoa não seja nulo ou vazio
             RuleFor(query => query.PersonId)
-                .NotEmpty();
+                .NotEmpty()
+                .WithName("Id da pessoa");
         }
     }
 }

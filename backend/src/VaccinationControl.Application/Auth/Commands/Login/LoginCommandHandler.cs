@@ -7,11 +7,11 @@ namespace VaccinationControl.Application.Auth.Commands.Login
     public class LoginCommandHandler(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
-        IJwtTokenGenerator jwtTokenGenerator) : IRequestHandler<LoginCommand, AuthenticationResponse>
+        IJwtTokenGenerator jwtTokenGenerator) : IRequestHandler<LoginCommand, AuthenticationResult>
     {
         private const string InvalidCredentials = "E-mail ou senha inválidos.";
 
-        public async Task<AuthenticationResponse> Handle(
+        public async Task<AuthenticationResult> Handle(
             LoginCommand request,
             CancellationToken cancellationToken)
         {
@@ -26,7 +26,7 @@ namespace VaccinationControl.Application.Auth.Commands.Login
 
             var (token, expiresAtUtc) = jwtTokenGenerator.Generate(user);
 
-            return new AuthenticationResponse(user.Id, user.Email, token, expiresAtUtc);
+            return new AuthenticationResult(user.Id, user.Email, token, expiresAtUtc);
         }
     }
 }

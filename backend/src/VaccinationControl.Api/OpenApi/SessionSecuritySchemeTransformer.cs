@@ -1,15 +1,16 @@
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using VaccinationControl.Api.Security;
 
 namespace VaccinationControl.Api.OpenApi
 {
     /// <summary>
-    /// Declara o esquema Bearer no documento OpenAPI. Sem isto o Scalar não oferece onde
-    /// colar o token, e todos os endpoints protegidos aparecem como se fossem públicos.
+    /// Declara no documento OpenAPI qual credencial protege a API. Sem isto todos os endpoints
+    /// protegidos apareceriam como se fossem públicos.
     /// </summary>
-    public class BearerSecuritySchemeTransformer : IOpenApiDocumentTransformer
+    public class SessionSecuritySchemeTransformer : IOpenApiDocumentTransformer
     {
-        private const string SchemeName = "Bearer";
+        private const string SchemeName = "Session";
 
         public Task TransformAsync(
             OpenApiDocument document,
@@ -21,11 +22,12 @@ namespace VaccinationControl.Api.OpenApi
 
             document.Components.SecuritySchemes[SchemeName] = new OpenApiSecurityScheme
             {
-                Type = SecuritySchemeType.Http,
-                Scheme = "bearer",
-                BearerFormat = "JWT",
-                In = ParameterLocation.Header,
-                Description = "Token obtido em POST /api/auth/login."
+                Type = SecuritySchemeType.ApiKey,
+                In = ParameterLocation.Cookie,
+                Name = AuthCookie.Name,
+                Description =
+                    "Cookie HttpOnly gravado por POST /api/auth/login ou /api/auth/register "
+                    + "e apagado por POST /api/auth/logout."
             };
 
             return Task.CompletedTask;

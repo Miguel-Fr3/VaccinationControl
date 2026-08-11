@@ -26,11 +26,9 @@ namespace VaccinationControl.IntegrationTests
                 new { email = $"auditoria-{Guid.NewGuid():N}@exemplo.com", password = "senha12345" });
 
             var autenticacao = await registro.Content
-                .ReadFromJsonAsync<ApiClient.AutenticacaoResponse>(ApiClient.Json);
+                .ReadFromJsonAsync<ApiClient.SessaoResponse>(ApiClient.Json);
 
-            client.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", autenticacao!.Token);
-
+            // O cadastro já deixou o cookie no cliente; nada a montar antes da próxima chamada.
             var criacao = await client.PostAsJsonAsync(
                 "/api/vaccines",
                 new { name = $"Auditada {Guid.NewGuid():N}" });
@@ -45,7 +43,7 @@ namespace VaccinationControl.IntegrationTests
                 .AsNoTracking()
                 .SingleAsync(entidade => entidade.Id == vaccineId);
 
-            gravada.CreatedBy.Should().Be(autenticacao.UserId);
+            gravada.CreatedBy.Should().Be(autenticacao!.UserId);
             gravada.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
         }
 
@@ -61,7 +59,7 @@ namespace VaccinationControl.IntegrationTests
                 new { email, password = "senha12345" });
 
             var autenticacao = await registro.Content
-                .ReadFromJsonAsync<ApiClient.AutenticacaoResponse>(ApiClient.Json);
+                .ReadFromJsonAsync<ApiClient.SessaoResponse>(ApiClient.Json);
 
             using var scope = factory.Services.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -85,7 +83,7 @@ namespace VaccinationControl.IntegrationTests
                 new { email, password = senha });
 
             var autenticacao = await registro.Content
-                .ReadFromJsonAsync<ApiClient.AutenticacaoResponse>(ApiClient.Json);
+                .ReadFromJsonAsync<ApiClient.SessaoResponse>(ApiClient.Json);
 
             using var scope = factory.Services.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();

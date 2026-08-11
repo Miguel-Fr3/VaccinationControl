@@ -25,6 +25,19 @@ builder.Services
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
+// A interface é servida pelo Vite em outra origem, então toda chamada dela é cross-origin.
+// As origens vêm da configuração porque mudam por ambiente — e não podem ser um curinga: a
+// sessão vai trafegar em cookie, e credenciais exigem origem nomeada.
+var corsSettings = builder.Configuration.GetSection(CorsSettings.SectionName).Get<CorsSettings>()
+    ?? new CorsSettings();
+
+builder.Services.AddCors(options =>
+    options.AddPolicy(CorsSettings.PolicyName, policy => policy
+        .WithOrigins(corsSettings.AllowedOrigins)
+        .AllowCredentials()
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
+
 // A identidade do token alimenta os campos de auditoria das entidades gravadas.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
@@ -53,6 +66,24 @@ builder.Services
         // procuraria uma claim que deixou de existir — a auditoria ficaria sempre vazia.
         options.MapInboundClaims = false;
 
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // O token vem no cookie HttpOnly, não no cabeçalho Authorization. O handler do
+                // JWT não olha cookie, então precisa ser copiado para o campo que ele espera.
+                if (context.Request.Cookies.TryGetValue(AuthCookie.Name, out var token))
+                {
+                    context.Token = token;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
+
+        // Configura a validação do token JWT recebido, para que o handler rejeite tokens
+        // inválidos. A mesma instância de JwtSettings que assina os tokens é usada para
+        // validá-los, garantindo que a API aceite apenas tokens que ela própria emitiu.
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -62,7 +93,6 @@ builder.Services
             ValidIssuer = jwtSettings.Issuer,
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
-            // Sem tolerância de relógio: o padrão de 5 minutos estende a validade do token.
             ClockSkew = TimeSpan.Zero
         };
     });
@@ -78,7 +108,7 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi(options =>
-    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
+    options.AddDocumentTransformer<SessionSecuritySchemeTransformer>());
 
 var app = builder.Build();
 
@@ -87,13 +117,18 @@ app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
-    // A fallback policy exige token de todo endpoint, inclusive destes: sem AllowAnonymous
-    // a própria documentação responderia 401 e não haveria como obter o token para usá-la.
+    // O Scalar é a interface de teste da API. Ela não é parte do produto, então só aparece
+    // em desenvolvimento. Em produção, a API é consumida pelo cliente Vite.
     app.MapOpenApi().AllowAnonymous();
     app.MapScalarApiReference().AllowAnonymous();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors(CorsSettings.PolicyName);
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -101,8 +136,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
-// Torna o host visível para o WebApplicationFactory dos testes de integração.
-public partial class Program
-{
-}

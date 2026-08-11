@@ -9,12 +9,14 @@ namespace VaccinationControl.Application.Auth.Commands.RegisterUser
             RuleFor(command => command.Email)
                 .NotEmpty()
                 .EmailAddress()
-                .MaximumLength(200);
+                .MaximumLength(200)
+                .WithName("E-mail");
 
             RuleFor(command => command.Password)
                 .NotEmpty()
                 .MinimumLength(8)
-                .MaximumLength(128);
+                .MaximumLength(128)
+                .WithName("Senha");
         }
     }
 }
