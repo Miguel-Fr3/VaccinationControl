@@ -1,3 +1,4 @@
+using FluentAssertions;
 using FluentValidation.TestHelper;
 using VaccinationControl.Application.People.Commands.CreatePerson;
 
@@ -35,9 +36,13 @@ namespace VaccinationControl.UnitTests.People.Commands.CreatePerson
             // faria a mesma coisa aparecer com dois nomes na mesma tela.
             var result = _validator.TestValidate(new CreatePersonCommand("Maria Silva", "123"));
 
-            result.ShouldHaveValidationErrorFor(command => command.Document)
-                .WithErrorMessage(
-                    "'CPF' deve ser maior ou igual a 11 caracteres. Você digitou 3 caracteres.");
+            result.ShouldHaveValidationErrorFor(command => command.Document);
+
+            // Só o rótulo é conferido: a frase em volta é da FluentValidation e sai na
+            // cultura do processo, porque o validator instanciado aqui não passa pelo
+            // AddApplication, que é quem fixa o pt-BR. Quem guarda o idioma da mensagem é
+            // o ErrorContractTests, que atravessa a composição real.
+            result.Errors.Should().Contain(failure => failure.ErrorMessage.Contains("'CPF'"));
         }
 
         [Fact]
