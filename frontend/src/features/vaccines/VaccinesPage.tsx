@@ -18,24 +18,15 @@ import {
 } from '@mui/material';
 
 import { errorMessage } from '../../api/problemDetails';
-import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useListQuery } from '../../hooks/useListQuery';
 import { VaccineDialog } from './VaccineDialog';
 import { useVaccines } from './useVaccines';
 
 export default function VaccinesPage() {
-  const [search, setSearch] = useState('');
-  // A API conta as páginas a partir de 1; a tabela do MUI, a partir de 0.
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const list = useListQuery();
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const debouncedSearch = useDebouncedValue(search);
-
-  const { data, isPending, isFetching, isError, error } = useVaccines({
-    search: debouncedSearch || undefined,
-    page,
-    pageSize,
-  });
+  const { data, isPending, isFetching, isError, error } = useVaccines(list.query);
 
   // Com keepPreviousData o `data` da consulta anterior sobrevive ao erro. Exibir os dois
   // mostraria uma tabela que não corresponde ao filtro digitado.
@@ -62,10 +53,9 @@ export default function VaccinesPage() {
 
       <TextField
         label="Buscar por nome"
-        value={search}
+        value={list.search}
         onChange={event => {
-          setSearch(event.target.value);
-          setPage(1);
+          list.setSearch(event.target.value);
         }}
         fullWidth
       />
@@ -80,8 +70,8 @@ export default function VaccinesPage() {
 
       {showList && data.items.length === 0 && (
         <Alert severity="info">
-          {debouncedSearch
-            ? `Nenhuma vacina encontrada para "${debouncedSearch}".`
+          {list.query.search
+            ? `Nenhuma vacina encontrada para "${list.query.search}".`
             : 'Nenhuma vacina cadastrada ainda. Comece cadastrando a primeira.'}
         </Alert>
       )}
@@ -111,14 +101,14 @@ export default function VaccinesPage() {
           <TablePagination
             component="div"
             count={data.totalCount}
-            page={page - 1}
+            // A API conta as páginas a partir de 1; a tabela do MUI, a partir de 0.
+            page={list.page - 1}
             onPageChange={(_, nextPage) => {
-              setPage(nextPage + 1);
+              list.setPage(nextPage + 1);
             }}
-            rowsPerPage={pageSize}
+            rowsPerPage={list.pageSize}
             onRowsPerPageChange={event => {
-              setPageSize(Number(event.target.value));
-              setPage(1);
+              list.setPageSize(Number(event.target.value));
             }}
             rowsPerPageOptions={[10, 20, 50]}
           />
