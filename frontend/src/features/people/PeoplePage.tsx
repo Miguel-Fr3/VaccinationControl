@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@mui/material';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import { Link as RouterLink } from 'react-router-dom';
 
 import { errorMessage } from '../../api/problemDetails';
 import type { Person } from '../../api/types';
@@ -105,6 +106,15 @@ export default function PeoplePage() {
                     <TableCell>{person.name}</TableCell>
                     <TableCell>{formatCpf(person.document)}</TableCell>
                     <TableCell align="right">
+                      <Button
+                        size="small"
+                        component={RouterLink}
+                        to={`/pessoas/${person.id}/cartao`}
+                        sx={{ mr: 1 }}
+                      >
+                        Cartão
+                      </Button>
+
                       <Tooltip title="Excluir">
                         <IconButton
                           color="error"

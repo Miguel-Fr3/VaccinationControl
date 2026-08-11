@@ -5,6 +5,7 @@ import { AppLayout } from './components/AppLayout';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
 import PeoplePage from './features/people/PeoplePage';
+import VaccinationCardPage from './features/vaccinationCard/VaccinationCardPage';
 import VaccinesPage from './features/vaccines/VaccinesPage';
 
 export default function App() {
@@ -15,9 +16,10 @@ export default function App() {
 
       <Route element={<RequireSession />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Navigate to="/vacinas" replace />} />
-          <Route path="/vacinas" element={<VaccinesPage />} />
+          <Route path="/" element={<Navigate to="/pessoas" replace />} />
           <Route path="/pessoas" element={<PeoplePage />} />
+          <Route path="/vacinas" element={<VaccinesPage />} />
+          <Route path="/pessoas/:personId/cartao" element={<VaccinationCardPage />} />
         </Route>
       </Route>
 
