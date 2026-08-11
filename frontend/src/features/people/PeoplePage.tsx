@@ -23,7 +23,7 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import { errorMessage } from '../../api/problemDetails';
 import type { Person } from '../../api/types';
 import { useListQuery } from '../../hooks/useListQuery';
-import { formatCpf, searchTerm } from './cpf';
+import { formatCpf, searchTerm } from '../../format/cpf';
 import { DeletePersonDialog } from './DeletePersonDialog';
 import { PersonDialog } from './PersonDialog';
 import { usePeople } from './usePeople';
