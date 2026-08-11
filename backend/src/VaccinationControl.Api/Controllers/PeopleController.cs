@@ -33,7 +33,7 @@ namespace VaccinationControl.Api.Controllers
         /// <summary>
         /// Lista as pessoas cadastradas. Sem parâmetros, devolve todas.
         /// </summary>
-        /// <param name="search">Trecho do nome ou do documento. Opcional.</param>
+        /// <param name="search">Trecho do nome ou do CPF, sem máscara. Opcional.</param>
         /// <param name="page">Página desejada, a partir de 1. Opcional.</param>
         /// <param name="pageSize">Itens por página, de 1 a 100. Opcional; padrão 20.</param>
         /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
