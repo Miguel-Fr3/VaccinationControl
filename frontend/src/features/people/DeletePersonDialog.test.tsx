@@ -8,20 +8,20 @@ import { renderWithProviders } from '../../test/renderWithProviders';
 import type { Person } from '../../api/types';
 import { DeletePersonDialog } from './DeletePersonDialog';
 
-const pessoa: Person = { id: 'p1', name: 'Maria Silva', document: '12345678901' };
+const person: Person = { id: 'p1', name: 'Maria Silva', document: '12345678901' };
 
-const rotaCartao = '*/api/people/p1/vaccination-card';
-const rotaPessoa = '*/api/people/p1';
+const cardRoute = '*/api/people/p1/vaccination-card';
+const personRoute = '*/api/people/p1';
 
 /** Cartão com o total de aplicações distribuído entre duas vacinas. */
-function cartao(dosesPorVacina: number[]) {
+function card(dosesPerVaccine: number[]) {
   return {
-    personId: pessoa.id,
-    personName: pessoa.name,
-    document: pessoa.document,
-    vaccines: dosesPorVacina.map((totalDoses, indice) => ({
-      vaccineId: `v${String(indice)}`,
-      vaccineName: `Vacina ${String(indice)}`,
+    personId: person.id,
+    personName: person.name,
+    document: person.document,
+    vaccines: dosesPerVaccine.map((totalDoses, index) => ({
+      vaccineId: `v${String(index)}`,
+      vaccineName: `Vacina ${String(index)}`,
       totalDoses,
       doses: [],
     })),
@@ -30,9 +30,9 @@ function cartao(dosesPorVacina: number[]) {
 
 describe('DeletePersonDialog', () => {
   it('avisa que o cartao vai junto', async () => {
-    server.use(http.get(rotaCartao, () => HttpResponse.json(cartao([]))));
+    server.use(http.get(cardRoute, () => HttpResponse.json(card([]))));
 
-    renderWithProviders(<DeletePersonDialog person={pessoa} onClose={vi.fn()} />);
+    renderWithProviders(<DeletePersonDialog person={person} onClose={vi.fn()} />);
 
     expect(screen.getByText(/apaga também o cartão de vacinação/i)).toBeInTheDocument();
     expect(screen.getByText(/não pode ser desfeita/i)).toBeInTheDocument();
@@ -43,25 +43,25 @@ describe('DeletePersonDialog', () => {
 
   it('informa quantos registros serao perdidos', async () => {
     // 3 + 2 aplicações em duas vacinas: o aviso soma o cartão inteiro.
-    server.use(http.get(rotaCartao, () => HttpResponse.json(cartao([3, 2]))));
+    server.use(http.get(cardRoute, () => HttpResponse.json(card([3, 2]))));
 
-    renderWithProviders(<DeletePersonDialog person={pessoa} onClose={vi.fn()} />);
+    renderWithProviders(<DeletePersonDialog person={person} onClose={vi.fn()} />);
 
     expect(await screen.findByText('5 registros de vacinação serão perdidos.')).toBeInTheDocument();
   });
 
   it('usa o singular quando ha um registro so', async () => {
-    server.use(http.get(rotaCartao, () => HttpResponse.json(cartao([1]))));
+    server.use(http.get(cardRoute, () => HttpResponse.json(card([1]))));
 
-    renderWithProviders(<DeletePersonDialog person={pessoa} onClose={vi.fn()} />);
+    renderWithProviders(<DeletePersonDialog person={person} onClose={vi.fn()} />);
 
     expect(await screen.findByText('1 registro de vacinação será perdido.')).toBeInTheDocument();
   });
 
   it('diz quando nao ha registro nenhum', async () => {
-    server.use(http.get(rotaCartao, () => HttpResponse.json(cartao([]))));
+    server.use(http.get(cardRoute, () => HttpResponse.json(card([]))));
 
-    renderWithProviders(<DeletePersonDialog person={pessoa} onClose={vi.fn()} />);
+    renderWithProviders(<DeletePersonDialog person={person} onClose={vi.fn()} />);
 
     expect(
       await screen.findByText('Esta pessoa não tem nenhum registro de vacinação.'),
@@ -69,9 +69,9 @@ describe('DeletePersonDialog', () => {
   });
 
   it('nao deixa confirmar antes de saber o tamanho do estrago', async () => {
-    server.use(http.get(rotaCartao, () => HttpResponse.json(cartao([2]))));
+    server.use(http.get(cardRoute, () => HttpResponse.json(card([2]))));
 
-    renderWithProviders(<DeletePersonDialog person={pessoa} onClose={vi.fn()} />);
+    renderWithProviders(<DeletePersonDialog person={person} onClose={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: /excluir/i })).toBeDisabled();
 
@@ -81,43 +81,43 @@ describe('DeletePersonDialog', () => {
 
   it('mantem o aviso de cascata quando o cartao nao pode ser consultado', async () => {
     // Sem o número o aviso continua valendo — e a exclusão não pode ficar bloqueada por isso.
-    server.use(http.get(rotaCartao, () => HttpResponse.json({ status: 500 }, { status: 500 })));
+    server.use(http.get(cardRoute, () => HttpResponse.json({ status: 500 }, { status: 500 })));
 
-    renderWithProviders(<DeletePersonDialog person={pessoa} onClose={vi.fn()} />);
+    renderWithProviders(<DeletePersonDialog person={person} onClose={vi.fn()} />);
 
     expect(await screen.findByText(/não foi possível verificar o cartão/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /excluir/i })).toBeEnabled();
   });
 
   it('exclui e fecha ao confirmar', async () => {
-    const aoFechar = vi.fn();
-    let excluida = false;
+    const onClose = vi.fn();
+    let deleted = false;
 
     server.use(
-      http.get(rotaCartao, () => HttpResponse.json(cartao([1]))),
-      http.delete(rotaPessoa, () => {
-        excluida = true;
+      http.get(cardRoute, () => HttpResponse.json(card([1]))),
+      http.delete(personRoute, () => {
+        deleted = true;
         return new HttpResponse(null, { status: 204 });
       }),
     );
 
-    renderWithProviders(<DeletePersonDialog person={pessoa} onClose={aoFechar} />);
+    renderWithProviders(<DeletePersonDialog person={person} onClose={onClose} />);
     await screen.findByText('1 registro de vacinação será perdido.');
 
     await userEvent.click(screen.getByRole('button', { name: /excluir/i }));
 
     await waitFor(() => {
-      expect(aoFechar).toHaveBeenCalledOnce();
+      expect(onClose).toHaveBeenCalledOnce();
     });
-    expect(excluida).toBe(true);
+    expect(deleted).toBe(true);
   });
 
   it('mostra o erro da API e mantem o dialogo aberto', async () => {
-    const aoFechar = vi.fn();
+    const onClose = vi.fn();
 
     server.use(
-      http.get(rotaCartao, () => HttpResponse.json(cartao([1]))),
-      http.delete(rotaPessoa, () =>
+      http.get(cardRoute, () => HttpResponse.json(card([1]))),
+      http.delete(personRoute, () =>
         HttpResponse.json(
           { status: 404, detail: 'Pessoa não encontrada.' },
           { status: 404 },
@@ -125,12 +125,12 @@ describe('DeletePersonDialog', () => {
       ),
     );
 
-    renderWithProviders(<DeletePersonDialog person={pessoa} onClose={aoFechar} />);
+    renderWithProviders(<DeletePersonDialog person={person} onClose={onClose} />);
     await screen.findByText('1 registro de vacinação será perdido.');
 
     await userEvent.click(screen.getByRole('button', { name: /excluir/i }));
 
     expect(await screen.findByText('Pessoa não encontrada.')).toBeInTheDocument();
-    expect(aoFechar).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

@@ -7,12 +7,12 @@ import { server } from '../../test/server';
 import { renderWithProviders } from '../../test/renderWithProviders';
 import VaccinesPage from './VaccinesPage';
 
-const rota = '*/api/vaccines';
+const route = '*/api/vaccines';
 
 /** Envelope da API com o mesmo formato do `PagedResult<T>`. */
-function pagina(nomes: string[], totalCount = nomes.length, pageSize = 20) {
+function pagedResult(names: string[], totalCount = names.length, pageSize = 20) {
   return {
-    items: nomes.map((name, indice) => ({ id: `id-${indice}-${name}`, name })),
+    items: names.map((name, index) => ({ id: `id-${index}-${name}`, name })),
     page: 1,
     pageSize,
     totalCount,
@@ -22,7 +22,7 @@ function pagina(nomes: string[], totalCount = nomes.length, pageSize = 20) {
 
 describe('VaccinesPage', () => {
   it('mostra o carregamento antes da resposta', async () => {
-    server.use(http.get(rota, () => HttpResponse.json(pagina(['BCG']))));
+    server.use(http.get(route, () => HttpResponse.json(pagedResult(['BCG']))));
 
     renderWithProviders(<VaccinesPage />);
 
@@ -33,7 +33,7 @@ describe('VaccinesPage', () => {
   });
 
   it('lista as vacinas devolvidas pela API', async () => {
-    server.use(http.get(rota, () => HttpResponse.json(pagina(['BCG', 'Hepatite B']))));
+    server.use(http.get(route, () => HttpResponse.json(pagedResult(['BCG', 'Hepatite B']))));
 
     renderWithProviders(<VaccinesPage />);
 
@@ -42,7 +42,7 @@ describe('VaccinesPage', () => {
   });
 
   it('convida ao cadastro quando nao ha nenhuma vacina', async () => {
-    server.use(http.get(rota, () => HttpResponse.json(pagina([]))));
+    server.use(http.get(route, () => HttpResponse.json(pagedResult([]))));
 
     renderWithProviders(<VaccinesPage />);
 
@@ -52,7 +52,7 @@ describe('VaccinesPage', () => {
   it('mostra a mensagem de erro da API e esconde a tabela', async () => {
     // O detail do ProblemDetails precisa chegar à tela: é a mensagem escrita para o usuário.
     server.use(
-      http.get(rota, () =>
+      http.get(route, () =>
         HttpResponse.json(
           { title: 'Requisição inválida', status: 400, detail: 'Falha ao consultar o catálogo.' },
           { status: 400 },
@@ -69,14 +69,14 @@ describe('VaccinesPage', () => {
   it('nao mistura a tabela antiga com o erro da busca seguinte', async () => {
     // Com keepPreviousData o data anterior sobrevive ao erro; a tabela exibida não
     // corresponderia ao filtro digitado.
-    let chamadas = 0;
+    let calls = 0;
 
     server.use(
-      http.get(rota, () => {
-        chamadas += 1;
+      http.get(route, () => {
+        calls += 1;
 
-        return chamadas === 1
-          ? HttpResponse.json(pagina(['BCG']))
+        return calls === 1
+          ? HttpResponse.json(pagedResult(['BCG']))
           : HttpResponse.json({ status: 500, detail: 'Servidor indisponivel.' }, { status: 500 });
       }),
     );
@@ -91,13 +91,13 @@ describe('VaccinesPage', () => {
   });
 
   it('envia o trecho buscado como parametro de consulta', async () => {
-    const buscas: (string | null)[] = [];
+    const searches: (string | null)[] = [];
 
     server.use(
-      http.get(rota, ({ request }) => {
-        buscas.push(new URL(request.url).searchParams.get('search'));
+      http.get(route, ({ request }) => {
+        searches.push(new URL(request.url).searchParams.get('search'));
 
-        return HttpResponse.json(pagina(['Hepatite B']));
+        return HttpResponse.json(pagedResult(['Hepatite B']));
       }),
     );
 
@@ -108,16 +108,16 @@ describe('VaccinesPage', () => {
 
     // O debounce agrupa as teclas: a busca vai numa requisição só, e não em cinco.
     await waitFor(() => {
-      expect(buscas).toContain('hepat');
+      expect(searches).toContain('hepat');
     });
   });
 
   it('avisa quando a busca nao encontra nada', async () => {
     server.use(
-      http.get(rota, ({ request }) => {
+      http.get(route, ({ request }) => {
         const search = new URL(request.url).searchParams.get('search');
 
-        return HttpResponse.json(search ? pagina([]) : pagina(['BCG']));
+        return HttpResponse.json(search ? pagedResult([]) : pagedResult(['BCG']));
       }),
     );
 
@@ -132,17 +132,17 @@ describe('VaccinesPage', () => {
   it('pagina pelo servidor, convertendo o indice da tabela', async () => {
     // A API conta a partir de 1 e a tabela do MUI a partir de 0: o clique em "próxima"
     // precisa pedir page=2, não page=1.
-    const paginasPedidas: (string | null)[] = [];
+    const requestedPages: (string | null)[] = [];
 
     server.use(
-      http.get(rota, ({ request }) => {
+      http.get(route, ({ request }) => {
         const page = new URL(request.url).searchParams.get('page');
-        paginasPedidas.push(page);
+        requestedPages.push(page);
 
         // O total precisa passar do pageSize de 20, senão a tabela tem uma página só e o
         // botão de avançar nasce desabilitado.
         return HttpResponse.json({
-          ...pagina(page === '2' ? ['Triplice Viral'] : ['BCG', 'Hepatite B'], 25),
+          ...pagedResult(page === '2' ? ['Triplice Viral'] : ['BCG', 'Hepatite B'], 25),
           page: Number(page),
         });
       }),
@@ -154,20 +154,20 @@ describe('VaccinesPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /próxima página/i }));
 
     expect(await screen.findByText('Triplice Viral')).toBeInTheDocument();
-    expect(paginasPedidas).toEqual(['1', '2']);
+    expect(requestedPages).toEqual(['1', '2']);
   });
 
   it('volta para a primeira pagina ao filtrar', async () => {
     // Sem isso, quem está na página 2 e digita uma busca pede a página 2 do resultado novo,
     // que costuma não existir — e a listagem vem vazia sem explicação.
-    const pedidos: { page: string | null; search: string | null }[] = [];
+    const requests: { page: string | null; search: string | null }[] = [];
 
     server.use(
-      http.get(rota, ({ request }) => {
-        const parametros = new URL(request.url).searchParams;
-        pedidos.push({ page: parametros.get('page'), search: parametros.get('search') });
+      http.get(route, ({ request }) => {
+        const params = new URL(request.url).searchParams;
+        requests.push({ page: params.get('page'), search: params.get('search') });
 
-        return HttpResponse.json({ ...pagina(['BCG'], 25), page: Number(parametros.get('page')) });
+        return HttpResponse.json({ ...pagedResult(['BCG'], 25), page: Number(params.get('page')) });
       }),
     );
 
@@ -176,24 +176,24 @@ describe('VaccinesPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /próxima página/i }));
     await waitFor(() => {
-      expect(pedidos.at(-1)?.page).toBe('2');
+      expect(requests.at(-1)?.page).toBe('2');
     });
 
     await userEvent.type(screen.getByLabelText(/buscar por nome/i), 'bcg');
 
     await waitFor(() => {
-      expect(pedidos.at(-1)).toEqual({ page: '1', search: 'bcg' });
+      expect(requests.at(-1)).toEqual({ page: '1', search: 'bcg' });
     });
   });
 
   it('cadastra uma vacina e recarrega a listagem', async () => {
-    let cadastradas: string[] = ['BCG'];
+    let registered: string[] = ['BCG'];
 
     server.use(
-      http.get(rota, () => HttpResponse.json(pagina(cadastradas))),
-      http.post(rota, async ({ request }) => {
+      http.get(route, () => HttpResponse.json(pagedResult(registered))),
+      http.post(route, async ({ request }) => {
         const body = (await request.json()) as { name: string };
-        cadastradas = [...cadastradas, body.name];
+        registered = [...registered, body.name];
 
         return HttpResponse.json({ id: 'nova', name: body.name }, { status: 201 });
       }),
@@ -204,9 +204,9 @@ describe('VaccinesPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /nova vacina/i }));
 
-    const dialogo = screen.getByRole('dialog');
-    await userEvent.type(within(dialogo).getByLabelText(/nome/i), 'Febre Amarela');
-    await userEvent.click(within(dialogo).getByRole('button', { name: /salvar/i }));
+    const dialog = screen.getByRole('dialog');
+    await userEvent.type(within(dialog).getByLabelText(/nome/i), 'Febre Amarela');
+    await userEvent.click(within(dialog).getByRole('button', { name: /salvar/i }));
 
     expect(await screen.findByText('Febre Amarela')).toBeInTheDocument();
 

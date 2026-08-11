@@ -7,15 +7,15 @@ import { server } from '../../test/server';
 import { renderWithProviders } from '../../test/renderWithProviders';
 import PeoplePage from './PeoplePage';
 
-const rota = '*/api/people';
+const route = '*/api/people';
 
-function pagina(
-  pessoas: { name: string; document: string }[],
-  totalCount = pessoas.length,
+function pagedResult(
+  people: { name: string; document: string }[],
+  totalCount = people.length,
   pageSize = 20,
 ) {
   return {
-    items: pessoas.map((pessoa, indice) => ({ id: `p${String(indice)}`, ...pessoa })),
+    items: people.map((person, index) => ({ id: `p${String(index)}`, ...person })),
     page: 1,
     pageSize,
     totalCount,
@@ -29,7 +29,7 @@ const joao = { name: 'João Souza', document: '98765432100' };
 describe('PeoplePage', () => {
   it('lista nome e CPF mascarado', async () => {
     // A API devolve os 11 dígitos crus; a máscara é aplicada na exibição.
-    server.use(http.get(rota, () => HttpResponse.json(pagina([maria, joao]))));
+    server.use(http.get(route, () => HttpResponse.json(pagedResult([maria, joao]))));
 
     renderWithProviders(<PeoplePage />);
 
@@ -39,7 +39,7 @@ describe('PeoplePage', () => {
   });
 
   it('convida ao cadastro quando nao ha ninguem', async () => {
-    server.use(http.get(rota, () => HttpResponse.json(pagina([]))));
+    server.use(http.get(route, () => HttpResponse.json(pagedResult([]))));
 
     renderWithProviders(<PeoplePage />);
 
@@ -48,7 +48,7 @@ describe('PeoplePage', () => {
 
   it('mostra o erro da API e esconde a tabela', async () => {
     server.use(
-      http.get(rota, () =>
+      http.get(route, () =>
         HttpResponse.json({ status: 500, detail: 'Falha ao consultar.' }, { status: 500 }),
       ),
     );
@@ -60,12 +60,12 @@ describe('PeoplePage', () => {
   });
 
   it('busca por nome pelo servidor', async () => {
-    const buscas: (string | null)[] = [];
+    const searches: (string | null)[] = [];
 
     server.use(
-      http.get(rota, ({ request }) => {
-        buscas.push(new URL(request.url).searchParams.get('search'));
-        return HttpResponse.json(pagina([maria]));
+      http.get(route, ({ request }) => {
+        searches.push(new URL(request.url).searchParams.get('search'));
+        return HttpResponse.json(pagedResult([maria]));
       }),
     );
 
@@ -75,18 +75,18 @@ describe('PeoplePage', () => {
     await userEvent.type(screen.getByLabelText(/buscar por nome ou cpf/i), 'Maria');
 
     await waitFor(() => {
-      expect(buscas).toContain('Maria');
+      expect(searches).toContain('Maria');
     });
   });
 
   it('tira a mascara do CPF digitado na busca', async () => {
     // O CPF está gravado sem pontuação: "123.456" precisa chegar como "123456".
-    const buscas: (string | null)[] = [];
+    const searches: (string | null)[] = [];
 
     server.use(
-      http.get(rota, ({ request }) => {
-        buscas.push(new URL(request.url).searchParams.get('search'));
-        return HttpResponse.json(pagina([maria]));
+      http.get(route, ({ request }) => {
+        searches.push(new URL(request.url).searchParams.get('search'));
+        return HttpResponse.json(pagedResult([maria]));
       }),
     );
 
@@ -96,20 +96,20 @@ describe('PeoplePage', () => {
     await userEvent.type(screen.getByLabelText(/buscar por nome ou cpf/i), '123.456');
 
     await waitFor(() => {
-      expect(buscas).toContain('123456');
+      expect(searches).toContain('123456');
     });
   });
 
   it('pagina pelo servidor, convertendo o indice da tabela', async () => {
-    const paginasPedidas: (string | null)[] = [];
+    const requestedPages: (string | null)[] = [];
 
     server.use(
-      http.get(rota, ({ request }) => {
+      http.get(route, ({ request }) => {
         const page = new URL(request.url).searchParams.get('page');
-        paginasPedidas.push(page);
+        requestedPages.push(page);
 
         return HttpResponse.json({
-          ...pagina(page === '2' ? [joao] : [maria], 25),
+          ...pagedResult(page === '2' ? [joao] : [maria], 25),
           page: Number(page),
         });
       }),
@@ -121,17 +121,17 @@ describe('PeoplePage', () => {
     await userEvent.click(screen.getByRole('button', { name: /próxima página/i }));
 
     expect(await screen.findByText('João Souza')).toBeInTheDocument();
-    expect(paginasPedidas).toEqual(['1', '2']);
+    expect(requestedPages).toEqual(['1', '2']);
   });
 
   it('cadastra uma pessoa e recarrega a listagem', async () => {
-    let cadastradas = [maria];
+    let registered = [maria];
 
     server.use(
-      http.get(rota, () => HttpResponse.json(pagina(cadastradas))),
-      http.post(rota, async ({ request }) => {
+      http.get(route, () => HttpResponse.json(pagedResult(registered))),
+      http.post(route, async ({ request }) => {
         const body = (await request.json()) as { name: string; document: string };
-        cadastradas = [...cadastradas, body];
+        registered = [...registered, body];
 
         return HttpResponse.json({ id: 'nova', ...body }, { status: 201 });
       }),
@@ -142,19 +142,19 @@ describe('PeoplePage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /nova pessoa/i }));
 
-    const dialogo = screen.getByRole('dialog');
-    await userEvent.type(within(dialogo).getByLabelText(/nome/i), 'João Souza');
-    await userEvent.type(within(dialogo).getByLabelText(/cpf/i), '98765432100');
-    await userEvent.click(within(dialogo).getByRole('button', { name: /salvar/i }));
+    const dialog = screen.getByRole('dialog');
+    await userEvent.type(within(dialog).getByLabelText(/nome/i), 'João Souza');
+    await userEvent.type(within(dialog).getByLabelText(/cpf/i), '98765432100');
+    await userEvent.click(within(dialog).getByRole('button', { name: /salvar/i }));
 
     expect(await screen.findByText('João Souza')).toBeInTheDocument();
   });
 
   it('exclui pela linha e tira a pessoa da lista', async () => {
-    let cadastradas = [maria, joao];
+    let registered = [maria, joao];
 
     server.use(
-      http.get(rota, () => HttpResponse.json(pagina(cadastradas))),
+      http.get(route, () => HttpResponse.json(pagedResult(registered))),
       http.get('*/api/people/p0/vaccination-card', () =>
         HttpResponse.json({
           personId: 'p0',
@@ -164,7 +164,7 @@ describe('PeoplePage', () => {
         }),
       ),
       http.delete('*/api/people/p0', () => {
-        cadastradas = [joao];
+        registered = [joao];
         return new HttpResponse(null, { status: 204 });
       }),
     );
@@ -177,8 +177,8 @@ describe('PeoplePage', () => {
     // O aviso de cascata precisa aparecer antes de a exclusão ser possível.
     expect(await screen.findByText('2 registros de vacinação serão perdidos.')).toBeInTheDocument();
 
-    const dialogo = screen.getByRole('dialog');
-    await userEvent.click(within(dialogo).getByRole('button', { name: /excluir/i }));
+    const dialog = screen.getByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: /excluir/i }));
 
     await waitFor(() => {
       expect(screen.queryByText('Maria Silva')).not.toBeInTheDocument();
