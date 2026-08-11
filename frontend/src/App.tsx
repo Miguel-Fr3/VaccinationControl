@@ -1,14 +1,10 @@
-import { Typography } from '@mui/material';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { RequireSession } from './auth/RequireSession';
 import { AppLayout } from './components/AppLayout';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
-
-function Home() {
-  return <Typography variant="h1">Cartão de Vacinação</Typography>;
-}
+import VaccinesPage from './features/vaccines/VaccinesPage';
 
 export default function App() {
   return (
@@ -18,7 +14,8 @@ export default function App() {
 
       <Route element={<RequireSession />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Navigate to="/vacinas" replace />} />
+          <Route path="/vacinas" element={<VaccinesPage />} />
         </Route>
       </Route>
 
