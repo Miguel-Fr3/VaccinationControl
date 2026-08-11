@@ -17,6 +17,8 @@ env:
   DOTNET_NOLOGO: 'true'
   DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
+  # O Vite 7 exige Node 20.19+ ou 22.12+; a 22 e a LTS ativa.
+  NODE_VERSION: '22'
 
 jobs:
   backend:
@@ -57,6 +59,41 @@ jobs:
       - name: Executa os testes
         run: dotnet test --no-build --configuration Release --verbosity normal
 
-# O job do frontend sera adicionado quando frontend/ tiver um package.json.
-# Hoje a pasta esta vazia e um npm ci falharia, deixando a pipeline vermelha
-# sem que exista nada de errado no projeto.
+  # Independente do backend: os dois rodam em paralelo, e a falha de um nao
+  # esconde o resultado do outro.
+  frontend:
+    name: Frontend - Build e Testes
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      # O cache do npm vem do proprio setup-node; a chave sai do package-lock.json,
+      # entao qualquer mudanca de dependencia forca uma instalacao limpa.
+      - name: Configura o Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # npm ci, e nao npm install: instala exatamente o que esta no lock file e
+      # falha se ele estiver fora de sincronia com o package.json.
+      - name: Instala as dependencias
+        run: npm ci
+
+      - name: Verifica o lint
+        run: npm run lint
+
+      # O build roda 'tsc -b' antes do vite: e ele quem confere os tipos, porque
+      # o esbuild do vite apaga as anotacoes sem valida-las.
+      - name: Compila
+        run: npm run build
+
+      - name: Executa os testes
+        run: npm test
