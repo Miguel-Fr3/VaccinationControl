@@ -10,7 +10,11 @@ namespace VaccinationControl.Api.OpenApi
     /// </summary>
     public class SessionSecuritySchemeTransformer : IOpenApiDocumentTransformer
     {
-        private const string SchemeName = "Session";
+        /// <summary>
+        /// Nome do esquema no documento. O transformer de operação referencia esta mesma
+        /// constante: uma literal repetida geraria um <c>$ref</c> apontando para nada.
+        /// </summary>
+        public const string SchemeName = "Session";
 
         public Task TransformAsync(
             OpenApiDocument document,

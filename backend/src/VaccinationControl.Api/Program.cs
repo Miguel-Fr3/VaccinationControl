@@ -108,7 +108,12 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi(options =>
-    options.AddDocumentTransformer<SessionSecuritySchemeTransformer>());
+{
+    // Um declara a credencial no catálogo do documento; o outro a exige em cada operação
+    // protegida. Só o primeiro não basta: o catálogo sozinho não marca rota nenhuma.
+    options.AddDocumentTransformer<SessionSecuritySchemeTransformer>();
+    options.AddOperationTransformer<SessionSecurityRequirementTransformer>();
+});
 
 var app = builder.Build();
 
