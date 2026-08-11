@@ -1,5 +1,5 @@
-import { AppBar, Button, Container, Toolbar, Typography } from '@mui/material';
-import { Outlet } from 'react-router-dom';
+import { AppBar, Button, Container, Stack, Toolbar, Typography } from '@mui/material';
+import { NavLink, Outlet } from 'react-router-dom';
 
 import { useSession } from '../auth/useSession';
 import { useLogout } from '../features/auth/useAuth';
@@ -13,9 +13,15 @@ export function AppLayout() {
     <>
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" component="div" sx={{ mr: 4 }}>
             Cartão de Vacinação
           </Typography>
+
+          <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>
+            <Button color="inherit" component={NavLink} to="/vacinas">
+              Vacinas
+            </Button>
+          </Stack>
 
           <Typography variant="body2" sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
             {user?.email}
