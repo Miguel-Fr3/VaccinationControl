@@ -193,21 +193,25 @@ Documentação interativa disponível em desenvolvimento:
 
 ### Autenticação
 
-**Todos os endpoints exigem token**, exceto os dois de `/api/auth`. A exigência é aplicada por
-uma *fallback policy* global — um controller novo já nasce protegido, sem depender de alguém
-lembrar de anotar `[Authorize]`.
+**Todos os endpoints exigem sessão**, exceto `register`, `login` e `logout`. A exigência é
+aplicada por uma *fallback policy* global — um controller novo já nasce protegido, sem depender
+de alguém lembrar de anotar `[Authorize]`.
 
-Envie o token no cabeçalho:
+O token **não aparece em nenhuma resposta**: o cadastro e o login o gravam no cookie
+`vaccination-control-auth`, marcado `HttpOnly`, `Secure`, `SameSite=Lax` e com validade igual à
+do token. É o navegador que o carrega dali em diante, e o JavaScript não tem acesso a ele — um
+script injetado por XSS não consegue ler o que não pode ler.
 
 ```text
-Authorization: Bearer <token>
+Cookie: vaccination-control-auth=<token>
 ```
 
-Sem token, ou com token expirado, a resposta é `401`.
+Sem cookie, ou com token expirado, a resposta é `401`. O cabeçalho `Authorization: Bearer`
+continua sendo aceito para quem não é navegador, mas o cookie tem precedência quando ambos vêm.
 
 #### `POST /api/auth/register`
 
-Cadastra um usuário e já devolve o token — evita ter que chamar o login logo em seguida.
+Cadastra um usuário e já abre a sessão — evita ter que chamar o login logo em seguida.
 
 ```json
 { "email": "admin@exemplo.com", "password": "senha12345" }
@@ -231,19 +235,41 @@ Cadastra um usuário e já devolve o token — evita ter que chamar o login logo
 | 400 | E-mail ou senha ausentes |
 | 401 | Credencial inválida |
 
-Ambos devolvem o mesmo corpo:
+Ambos devolvem o mesmo corpo, e o `Set-Cookie` com o token:
 
 ```json
 {
   "userId": "d2b32c2d-0970-4720-bd92-e3337ddc9089",
-  "email": "admin@exemplo.com",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expiresAtUtc": "2026-08-10T16:40:00Z"
+  "email": "admin@exemplo.com"
 }
 ```
 
 E-mail inexistente e senha errada devolvem **a mesma mensagem** — distinguir os dois
 permitiria descobrir quais e-mails estão cadastrados.
+
+#### `POST /api/auth/logout`
+
+Apaga o cookie da sessão. Responde `204` sempre, inclusive sem sessão: quem chega com o cookie
+já vencido continua precisando que ele seja apagado.
+
+Precisa existir no servidor — apagar um cookie `HttpOnly` é impossível pelo JavaScript.
+
+#### `GET /api/auth/me`
+
+Devolve quem está autenticado na sessão corrente. É como a interface descobre se há sessão: o
+cookie é `HttpOnly`, então não há nada no navegador que o JavaScript possa inspecionar.
+
+| HTTP | Quando |
+| --- | --- |
+| 200 | Sessão válida |
+| 401 | Sem sessão, sessão expirada, ou usuário que não existe mais |
+
+```json
+{
+  "userId": "d2b32c2d-0970-4720-bd92-e3337ddc9089",
+  "email": "admin@exemplo.com"
+}
+```
 
 ##### Senha
 
@@ -627,17 +653,19 @@ O `recordId` de cada dose é o identificador usado para remover aquele registro 
 ### Exemplos de chamada
 
 ```bash
-# 1. obter o token — sem ele, todo o resto responde 401
-TOKEN=$(curl -s -X POST http://localhost:5201/api/auth/login \
+# 1. abrir a sessão — sem ela, todo o resto responde 401
+#    o token vem no cookie, então basta guardar o cookie jar e reenviá-lo com -b
+curl -s -c cookies.txt -X POST http://localhost:5201/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@exemplo.com","password":"senha12345"}' \
-  | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+  -d '{"email":"admin@exemplo.com","password":"senha12345"}'
 ```
+
+Os comandos abaixo omitem o `-b cookies.txt` por brevidade; sem ele, a resposta é `401`.
 
 ```bash
 # cadastrar uma vacina
 curl -X POST http://localhost:5201/api/vaccines \
-  -H "Authorization: Bearer $TOKEN" \
+  -b cookies.txt \
   -H "Content-Type: application/json" \
   -d '{"name":"Hepatite B"}'
 
@@ -947,9 +975,11 @@ partir do token e tradução de exceção em status HTTP.
 | Arquivo | O que cobre |
 | --- | --- |
 | `VaccinationFlowTests` | fluxo de ponta a ponta, RN03 a RN08 pela API, cascata da remoção |
-| `AuthenticationTests` | 401 sem token, documentação anônima, cadastro e login |
+| `AuthenticationTests` | 401 sem sessão, documentação anônima, cadastro e login |
+| `SessionCookieTests` | marcas do cookie, ausência do token no corpo, `me` e `logout` |
+| `CorsTests` | preflight liberado, credenciais permitidas, origem desconhecida recusada |
 | `ListingTests` | busca, paginação, caixa e escape de curinga — tudo no SQL de verdade |
-| `ErrorContractTests` | `application/problem+json`, dicionário de erros, agregação de campos |
+| `ErrorContractTests` | `application/problem+json`, dicionário de erros, rótulo em português |
 | `AuditTests` | `CreatedBy` vindo do token, cadastro anônimo sem autor, senha nunca em claro |
 
 Aqui as pastas **não** espelham o `src/`: cada arquivo é um cenário que atravessa vários casos
@@ -975,8 +1005,13 @@ configuração de JWT ao montar o builder, antes de qualquer fonte que a factory
 uma chave que chegue tarde simplesmente não é usada.
 
 O `ApiClient.AutenticadoAsync` cadastra um usuário com e-mail único e devolve um `HttpClient`
-com o cabeçalho `Authorization` pronto — sem ele, a *fallback policy* global responde 401 antes
-de qualquer controller.
+com a sessão aberta — sem ele, a *fallback policy* global responde 401 antes de qualquer
+controller. Não há token a manipular: o `HttpClient` da factory guarda o cookie da resposta e o
+reenvia sozinho, como o navegador faria.
+
+O endereço base do cliente é `https://localhost`, e não HTTP. O cookie é `Secure`, e o
+`CookieContainer` do .NET — ao contrário do navegador — não abre exceção para `localhost`: sobre
+HTTP ele guardaria o cookie e nunca mais o enviaria, e todo teste autenticado responderia 401.
 
 ---
 

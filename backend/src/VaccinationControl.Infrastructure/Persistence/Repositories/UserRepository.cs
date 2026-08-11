@@ -18,6 +18,13 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
                 .FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
         }
 
+        public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
+        }
+
         public void Add(User user)
         {
             context.Users.Add(user);

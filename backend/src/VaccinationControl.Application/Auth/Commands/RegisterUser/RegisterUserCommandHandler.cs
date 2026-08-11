@@ -10,9 +10,9 @@ namespace VaccinationControl.Application.Auth.Commands.RegisterUser
         IPasswordHasher passwordHasher,
         IJwtTokenGenerator jwtTokenGenerator,
         IUnitOfWork unitOfWork)
-        : IRequestHandler<RegisterUserCommand, AuthenticationResponse>
+        : IRequestHandler<RegisterUserCommand, AuthenticationResult>
     {
-        public async Task<AuthenticationResponse> Handle(
+        public async Task<AuthenticationResult> Handle(
             RegisterUserCommand request,
             CancellationToken cancellationToken)
         {
@@ -34,7 +34,7 @@ namespace VaccinationControl.Application.Auth.Commands.RegisterUser
 
             var (token, expiresAtUtc) = jwtTokenGenerator.Generate(user);
 
-            return new AuthenticationResponse(user.Id, user.Email, token, expiresAtUtc);
+            return new AuthenticationResult(user.Id, user.Email, token, expiresAtUtc);
         }
     }
 }

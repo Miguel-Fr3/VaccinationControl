@@ -33,21 +33,22 @@ namespace VaccinationControl.IntegrationTests
         }
 
         [Fact]
-        public async Task Deve_cadastrar_usuario_e_devolver_token()
+        public async Task Deve_cadastrar_usuario_e_abrir_a_sessao()
         {
             var client = factory.CreateClient();
+            var email = $"novo-{Guid.NewGuid():N}@exemplo.com";
 
             var resposta = await client.PostAsJsonAsync(
                 "/api/auth/register",
-                new { email = $"novo-{Guid.NewGuid():N}@exemplo.com", password = "senha12345" });
+                new { email, password = "senha12345" });
 
             resposta.StatusCode.Should().Be(HttpStatusCode.Created);
 
-            var autenticacao = await resposta.Content
-                .ReadFromJsonAsync<ApiClient.AutenticacaoResponse>(ApiClient.Json);
+            var sessao = await resposta.Content
+                .ReadFromJsonAsync<ApiClient.SessaoResponse>(ApiClient.Json);
 
-            autenticacao!.Token.Should().NotBeNullOrWhiteSpace();
-            autenticacao.UserId.Should().NotBeEmpty();
+            sessao!.UserId.Should().NotBeEmpty();
+            sessao.Email.Should().Be(email);
         }
 
         [Fact]
@@ -107,7 +108,7 @@ namespace VaccinationControl.IntegrationTests
         }
 
         [Fact]
-        public async Task Token_valido_deve_liberar_endpoint_protegido()
+        public async Task Sessao_aberta_deve_liberar_endpoint_protegido()
         {
             var client = await factory.AutenticadoAsync();
 

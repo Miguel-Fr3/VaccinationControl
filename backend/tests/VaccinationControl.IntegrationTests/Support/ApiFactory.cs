@@ -21,6 +21,14 @@ namespace VaccinationControl.IntegrationTests.Support
         // assim que a última conexão fecha.
         private readonly SqliteConnection _connection = new("DataSource=:memory:");
 
+        public ApiFactory()
+        {
+            // O cookie de sessão é Secure, e o CookieContainer do .NET — ao contrário do
+            // navegador — não abre exceção para localhost: sobre HTTP ele guardaria o cookie e
+            // nunca mais o enviaria, e todo teste autenticado responderia 401.
+            ClientOptions.BaseAddress = new Uri("https://localhost");
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Development");

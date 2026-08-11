@@ -66,6 +66,24 @@ builder.Services
         // procuraria uma claim que deixou de existir — a auditoria ficaria sempre vazia.
         options.MapInboundClaims = false;
 
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // O token vem no cookie HttpOnly, não no cabeçalho Authorization. O handler do
+                // JWT não olha cookie, então precisa ser copiado para o campo que ele espera.
+                if (context.Request.Cookies.TryGetValue(AuthCookie.Name, out var token))
+                {
+                    context.Token = token;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
+
+        // Configura a validação do token JWT recebido, para que o handler rejeite tokens
+        // inválidos. A mesma instância de JwtSettings que assina os tokens é usada para
+        // validá-los, garantindo que a API aceite apenas tokens que ela própria emitiu.
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -75,7 +93,6 @@ builder.Services
             ValidIssuer = jwtSettings.Issuer,
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
-            // Sem tolerância de relógio: o padrão de 5 minutos estende a validade do token.
             ClockSkew = TimeSpan.Zero
         };
     });
@@ -91,7 +108,7 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi(options =>
-    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
+    options.AddDocumentTransformer<SessionSecuritySchemeTransformer>());
 
 var app = builder.Build();
 
@@ -100,23 +117,17 @@ app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
-    // A fallback policy exige token de todo endpoint, inclusive destes: sem AllowAnonymous
-    // a própria documentação responderia 401 e não haveria como obter o token para usá-la.
+    // O Scalar é a interface de teste da API. Ela não é parte do produto, então só aparece
+    // em desenvolvimento. Em produção, a API é consumida pelo cliente Vite.
     app.MapOpenApi().AllowAnonymous();
     app.MapScalarApiReference().AllowAnonymous();
 }
 
-// Em desenvolvimento a interface conversa com o endereço HTTP (o VITE_API_URL aponta para
-// localhost:5201). Redirecionar para HTTPS ali quebraria o CORS: o navegador não segue
-// redirecionamento em requisição de verificação prévia, e o preflight morreria no 307.
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 
-// Antes da autenticação de propósito: o preflight chega sem cookie e sem cabeçalho, e é
-// respondido aqui. Depois de UseAuthorization ele esbarraria na fallback policy, voltaria 401
-// e o navegador desistiria antes de fazer a requisição real.
 app.UseCors(CorsSettings.PolicyName);
 
 app.UseAuthentication();
