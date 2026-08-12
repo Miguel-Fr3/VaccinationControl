@@ -5,6 +5,9 @@ import react from '@vitejs/plugin-react';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Ancorado no diretório do projeto: sem isto o cache do Vitest é resolvido a partir do
+  // arquivo que iniciou a execução e acaba gravado em `src/node_modules/`, dentro do código.
+  cacheDir: 'node_modules/.vite',
   test: {
     // jsdom porque os testes montam componentes; sem DOM não há o que consultar.
     environment: 'jsdom',
