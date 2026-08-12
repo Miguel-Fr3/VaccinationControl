@@ -265,7 +265,9 @@ Ambos devolvem o mesmo corpo, e o `Set-Cookie` com o token:
 ```
 
 E-mail inexistente e senha errada devolvem **a mesma mensagem** — distinguir os dois
-permitiria descobrir quais e-mails estão cadastrados.
+permitiria descobrir quais e-mails estão cadastrados. E o mesmo tempo: sem usuário, o handler
+paga o custo do PBKDF2 assim mesmo, senão a resposta voltaria numa fração do tempo e a duração
+diria o que a mensagem esconde.
 
 #### `POST /api/auth/logout`
 
@@ -1018,8 +1020,10 @@ do estado informado.
 A suíte cobre também o **caso negativo** que costuma passar despercebido: quando uma regra
 falha, `Add` e `SaveChangesAsync` não podem ser chamados.
 
-Dois comportamentos de segurança também têm teste: o login usa a mesma mensagem para e-mail
-inexistente e senha errada, e o cadastro grava o hash e nunca a senha em claro.
+Três comportamentos de segurança também têm teste: o login usa a mesma mensagem para e-mail
+inexistente e senha errada, paga o custo do hash mesmo sem usuário — medir tempo em teste seria
+instável, então o que se afirma é que o hash foi chamado — e o cadastro grava o hash e nunca a
+senha em claro.
 
 Nomes de teste referenciam a regra (`RN06_deve_exigir_a_anterior_do_mesmo_tipo`), ligando a
 suíte à tabela de [regras da dose](#regras-da-dose).

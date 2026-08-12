@@ -53,6 +53,22 @@ namespace VaccinationControl.UnitTests.Auth.Commands.Login
         }
 
         [Fact]
+        public async Task Deve_pagar_o_custo_do_hash_quando_o_email_nao_existe()
+        {
+            // A mensagem já é a mesma para os dois casos, mas o tempo não era: sem usuário
+            // ninguém chamava o PBKDF2, e a resposta voltava numa fração do tempo. Medir
+            // duração em teste seria instável; o que se afirma é que o custo foi pago.
+            _userRepository.GetByEmailAsync(Email, Arg.Any<CancellationToken>())
+                .Returns((User?)null);
+
+            var act = () => _handler.Handle(new LoginCommand(Email, Senha), CancellationToken.None);
+
+            await act.Should().ThrowAsync<UnauthorizedException>();
+
+            _passwordHasher.Received(1).Hash(Senha);
+        }
+
+        [Fact]
         public async Task Deve_usar_a_mesma_mensagem_para_email_inexistente_e_senha_errada()
         {
             // Distinguir os dois permitiria descobrir quais e-mails estão cadastrados.

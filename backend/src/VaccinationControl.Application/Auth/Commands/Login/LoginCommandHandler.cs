@@ -19,7 +19,15 @@ namespace VaccinationControl.Application.Auth.Commands.Login
 
             var user = await userRepository.GetByEmailAsync(email, cancellationToken);
 
-            if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
+            if (user is null)
+            {
+                // Paga o custo do hash mesmo quando o usuário não existe, para não dar pista de que o e-mail não está cadastrado.
+                _ = passwordHasher.Hash(request.Password);
+
+                throw new UnauthorizedException(InvalidCredentials);
+            }
+
+            if (!passwordHasher.Verify(request.Password, user.PasswordHash))
             {
                 throw new UnauthorizedException(InvalidCredentials);
             }
