@@ -31,9 +31,24 @@ builder.Services
 var corsSettings = builder.Configuration.GetSection(CorsSettings.SectionName).Get<CorsSettings>()
     ?? new CorsSettings();
 
+var allowedOrigins = corsSettings.AllowedOrigins
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .ToArray();
+
+// Sem nenhuma origem, WithOrigins() monta uma política que não libera ninguém — e o sintoma
+// aparece só no console do navegador, como erro de CORS, sem uma linha no log da API. Mesmo
+// critério da chave do JWT: configuração que falta derruba o startup, onde a causa é legível.
+if (allowedOrigins.Length == 0)
+{
+    throw new InvalidOperationException(
+        "Nenhuma origem foi configurada em 'Cors:AllowedOrigins'. Em desenvolvimento, o valor "
+        + "está no appsettings.json; em produção, defina por variável de ambiente "
+        + "('Cors__AllowedOrigins__0').");
+}
+
 builder.Services.AddCors(options =>
     options.AddPolicy(CorsSettings.PolicyName, policy => policy
-        .WithOrigins(corsSettings.AllowedOrigins)
+        .WithOrigins(allowedOrigins)
         .AllowCredentials()
         .AllowAnyHeader()
         .AllowAnyMethod()));
@@ -54,6 +69,18 @@ if (string.IsNullOrWhiteSpace(jwtSettings.Key))
     throw new InvalidOperationException(
         "A chave 'Jwt:Key' não foi configurada. Em desenvolvimento, defina com "
         + "'dotnet user-secrets set \"Jwt:Key\" \"<chave>\"'; em produção, por variável de ambiente.");
+}
+
+// O HMAC-SHA256 recusa chave menor que o próprio digest. Sem esta conferência a API sobe
+// normalmente com uma chave curta e só quebra no primeiro login, com 500 e uma exceção que
+// não menciona configuração — a chave ausente já falha aqui, e a curta merece o mesmo.
+const int minimumJwtKeyBytes = 32;
+
+if (Encoding.UTF8.GetByteCount(jwtSettings.Key) < minimumJwtKeyBytes)
+{
+    throw new InvalidOperationException(
+        $"A chave 'Jwt:Key' precisa ter no mínimo {minimumJwtKeyBytes} bytes (256 bits), "
+        + "exigência do HMAC-SHA256 usado para assinar os tokens.");
 }
 
 builder.Services.AddSingleton(Options.Create(jwtSettings));
