@@ -15,5 +15,13 @@ export default defineConfig({
     // build confere os arquivos de teste junto com o resto de `src/`.
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    coverage: {
+      // `include` explícito porque o padrão mede só os arquivos que algum teste importou:
+      // uma tela sem teste nenhum sairia do relatório em vez de aparecer com 0%.
+      include: ['src/**/*.{ts,tsx}'],
+      // O ponto de entrada, os helpers de teste e os próprios testes não dizem nada sobre
+      // o quanto do produto está coberto.
+      exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/test/**', '**/*.test.{ts,tsx}'],
+    },
   },
 });
