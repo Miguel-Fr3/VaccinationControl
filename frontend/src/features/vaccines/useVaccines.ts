@@ -32,3 +32,16 @@ export function useCreateVaccine() {
     },
   });
 }
+
+// Exclui uma vacina do catálogo. Sem cascata: a API responde 409 se houver dose registrada,
+// e a mensagem dela é o que a tela mostra — quem decide é o servidor.
+export function useDeleteVaccine() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (vaccineId: string) => api.delete(`/api/vaccines/${vaccineId}`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [vaccinesKey] });
+    },
+  });
+}

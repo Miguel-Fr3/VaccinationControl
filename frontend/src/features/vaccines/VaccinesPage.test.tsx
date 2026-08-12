@@ -215,4 +215,30 @@ describe('VaccinesPage', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
   });
+
+  it('exclui uma vacina e recarrega a listagem', async () => {
+    let registered = ['BCG', 'Hepatite B'];
+
+    server.use(
+      http.get(route, () => HttpResponse.json(pagedResult(registered))),
+      http.delete('*/api/vaccines/:id', ({ params }) => {
+        registered = registered.filter(name => `id-1-${name}` !== params.id);
+
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderWithProviders(<VaccinesPage />);
+    await screen.findByText('Hepatite B');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Excluir Hepatite B' }));
+
+    const dialog = screen.getByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: /^excluir$/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Hepatite B')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('BCG')).toBeInTheDocument();
+  });
 });
