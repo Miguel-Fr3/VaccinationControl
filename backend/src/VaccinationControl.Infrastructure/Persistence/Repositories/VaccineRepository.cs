@@ -23,6 +23,13 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
             context.Vaccines.Add(vaccine);
         }
 
+        public void Remove(Vaccine vaccine)
+        {
+            // A entidade vem sem tracking; Remove a anexa como Deleted e o EF emite um
+            // DELETE pela chave.
+            context.Vaccines.Remove(vaccine);
+        }
+
         public async Task<(IReadOnlyList<Vaccine> Items, int TotalCount)> SearchAsync(
             string? search,
             int? skip,

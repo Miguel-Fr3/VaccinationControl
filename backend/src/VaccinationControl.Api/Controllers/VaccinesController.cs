@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using VaccinationControl.Application.Common.Models;
 using VaccinationControl.Application.Vaccines;
 using VaccinationControl.Application.Vaccines.Commands.CreateVaccine;
+using VaccinationControl.Application.Vaccines.Commands.DeleteVaccine;
 using VaccinationControl.Application.Vaccines.Queries.GetVaccineById;
 using VaccinationControl.Application.Vaccines.Queries.GetVaccines;
 
@@ -67,6 +68,22 @@ namespace VaccinationControl.Api.Controllers
             var vaccines = await sender.Send(query, cancellationToken);
 
             return Ok(vaccines);
+        }
+
+        /// <summary>
+        /// Remove uma vacina do catálogo. Vacina com dose registrada não pode ser removida.
+        /// </summary>
+        /// <param name="id">Identificador da vacina.</param>
+        /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+        [HttpDelete("{id:guid}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+        {
+            await sender.Send(new DeleteVaccineCommand(id), cancellationToken);
+
+            return NoContent();
         }
     }
 }
