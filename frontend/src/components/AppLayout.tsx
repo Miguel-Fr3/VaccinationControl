@@ -18,11 +18,11 @@ export function AppLayout() {
           </Typography>
 
           <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>
-            <Button color="inherit" component={NavLink} to="/vacinas">
-              Vacinas
-            </Button>
             <Button color="inherit" component={NavLink} to="/pessoas">
               Pessoas
+            </Button>
+            <Button color="inherit" component={NavLink} to="/vacinas">
+              Vacinas
             </Button>
           </Stack>
 

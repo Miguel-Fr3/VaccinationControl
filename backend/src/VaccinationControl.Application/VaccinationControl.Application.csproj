@@ -10,6 +10,7 @@
     <!-- 12.5.0 é a última versão sob licença MIT; a partir da 13.x o MediatR é comercial. -->
     <PackageReference Include="MediatR" Version="12.5.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
   </ItemGroup>
 
   <PropertyGroup>
