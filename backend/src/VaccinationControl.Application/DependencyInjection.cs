@@ -17,6 +17,9 @@ namespace VaccinationControl.Application
                 // Registra todos os handlers do MediatR no assembly da aplicação
                 configuration.RegisterServicesFromAssembly(applicationAssembly);
 
+                // Adiciona o comportamento de logging no pipeline.
+                configuration.AddOpenBehavior(typeof(LoggingBehavior<,>));
+
                 // Validação roda no pipeline, antes de qualquer handler.
                 configuration.AddOpenBehavior(typeof(ValidationBehavior<,>));
             });

@@ -90,7 +90,7 @@ Cada camada expõe um método de extensão que registra os próprios serviços, 
 
 | Camada | Método | Registra |
 | --- | --- | --- |
-| Application | `AddApplication()` | MediatR, `ValidationBehavior`, validators do FluentValidation |
+| Application | `AddApplication()` | MediatR, `LoggingBehavior`, `ValidationBehavior`, validators do FluentValidation |
 | Infrastructure | `AddInfrastructure(configuration, contentRootPath)` | `AppDbContext`, `IUnitOfWork`, repositórios |
 
 Com isso o `Program.cs` compõe a aplicação em duas linhas e não precisa conhecer `AppDbContext`,
@@ -111,6 +111,8 @@ sobre `IServiceCollection`.
 Controller
     ↓ ISender.Send(command)
 MediatR
+    ↓
+LoggingBehavior              registra o desfecho do caso de uso e quanto ele demorou
     ↓
 ValidationBehavior           valida o command com FluentValidation
     ↓
@@ -154,6 +156,49 @@ sempre `ProblemDetails`:
 
 As exceções de domínio ficam no Domain e não conhecem HTTP — o mapeamento é responsabilidade
 da camada de API.
+
+### Logs
+
+Toda requisição que passa pelo MediatR deixa **uma linha**, escrita pelo `LoggingBehavior` —
+o behavior mais externo do pipeline, por isso ele enxerga também o que a validação barrou.
+Log espalhado por handler divergiria no primeiro caso de uso novo; concentrado no pipeline,
+o formato é o mesmo para os dezesseis endpoints, e um endpoint novo já nasce registrado.
+
+| Desfecho | Nível | Linha |
+| --- | --- | --- |
+| Sucesso | `Information` | `CreateVaccineCommand concluido em 42 ms por <id>` |
+| Entrada inválida (400) | `Warning` | `CreateVaccineCommand rejeitado na validacao de Name em 7 ms por <id>` |
+| Regra de negócio (401/404/409/422) | `Warning` | `CreateVaccineCommand recusado por ConflictException em 4 ms por <id>` |
+| Falha inesperada (500) | `Error` | registrada pelo `GlobalExceptionHandler`, com a exceção inteira |
+
+Os campos são sempre os mesmos: caso de uso, desfecho, duração e autor — `anonimo` quando
+não há sessão, como no login e no cadastro do primeiro usuário.
+
+**O que não entra no log**, de propósito:
+
+* **O corpo do request.** Ele carrega senha no login e CPF no cadastro de pessoa.
+* **A mensagem da exceção.** Ela repete esses mesmos valores (*"Já existe uma pessoa
+  cadastrada com o CPF '…'"*), então o motivo da recusa é o **tipo** da exceção. Quem precisa
+  do detalhe tem a resposta HTTP, que o cliente recebeu.
+* **Os valores dos campos inválidos.** Só os nomes, que bastam para saber qual formulário
+  está mandando entrada errada.
+* **Uma linha de início.** Ela dobraria o volume sem dizer nada que a de conclusão não diga.
+
+A categoria é `VaccinationControl.UseCase`, então o volume se ajusta sem tocar em código:
+
+```json
+"Logging": { "LogLevel": { "VaccinationControl.UseCase": "Warning" } }
+```
+
+Duas categorias do framework já vêm baixadas em `appsettings.json`: `Microsoft.AspNetCore`
+e `Microsoft.EntityFrameworkCore.Database.Command` — esta última despejaria o SQL de cada
+consulta em `Information`, ruído que a linha de caso de uso já resume. Suba-a em
+`appsettings.Development.json` quando precisar ver as queries.
+
+Uma consequência a conhecer: requisição **sem sessão** não gera linha, porque a *fallback
+policy* a barra antes do MediatR. Cookie vencido é rotina em qualquer aba aberta, e registrar
+isso encheria o log sem informar nada. Tentativa de login com credencial errada **é**
+registrada — ela chega ao handler e sai como `UnauthorizedException`.
 
 ---
 

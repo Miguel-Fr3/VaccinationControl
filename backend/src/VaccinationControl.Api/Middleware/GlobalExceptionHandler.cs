@@ -48,6 +48,9 @@ namespace VaccinationControl.Api.Middleware
             if (problemDetails is null)
             {
                 // Falha não prevista: registra e devolve o pipeline padrão, que responde 500.
+                // As previstas não são registradas aqui — o LoggingBehavior já as anotou como
+                // aviso, junto do caso de uso que as provocou, e repetir a anotação produziria
+                // duas entradas para o mesmo fato.
                 logger.LogError(
                     exception,
                     "Falha nao tratada ao processar {Method} {Path}.",
