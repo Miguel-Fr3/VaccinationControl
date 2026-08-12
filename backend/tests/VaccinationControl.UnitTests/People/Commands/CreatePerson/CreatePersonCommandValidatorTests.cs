@@ -29,6 +29,20 @@ namespace VaccinationControl.UnitTests.People.Commands.CreatePerson
             result.ShouldHaveValidationErrorFor(command => command.Document);
         }
 
+        [Theory]
+        [InlineData("abcdefghijk")]    // onze letras
+        [InlineData("1234567890 ")]    // dez dígitos e um espaço
+        [InlineData("123.456.789")]    // onze caracteres com pontuação
+        [InlineData("١٢٣٤٥٦٧٨٩٠١")]    // onze dígitos arábico-índicos
+        public void Deve_recusar_documento_que_nao_seja_onze_digitos(string document)
+        {
+            // O tamanho sozinho aceitava qualquer coisa com onze caracteres. O espaço é o caso
+            // que mais enganava: passava na regra e o Trim do handler o gravava com dez dígitos.
+            var result = _validator.TestValidate(new CreatePersonCommand("Maria Silva", document));
+
+            result.ShouldHaveValidationErrorFor(command => command.Document);
+        }
+
         [Fact]
         public void Mensagem_do_documento_deve_chamar_o_campo_de_CPF()
         {

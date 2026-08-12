@@ -16,7 +16,7 @@ namespace VaccinationControl.Application.People.Commands.CreatePerson
             var person = new Person
             {
                 Name = request.Name.Trim(),
-                Document = request.Document.Trim()
+                Document = request.Document
             };
 
             // Antecipa o índice único para responder 409 com uma mensagem útil. A corrida

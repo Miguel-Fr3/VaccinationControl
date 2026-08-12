@@ -39,17 +39,32 @@ namespace VaccinationControl.UnitTests.People.Commands.CreatePerson
         }
 
         [Fact]
-        public async Task Deve_remover_espacos_das_pontas_do_nome_e_do_documento()
+        public async Task Deve_remover_espacos_das_pontas_do_nome()
         {
             _personRepository.ExistsByDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(false);
 
             var response = await _handler.Handle(
-                new CreatePersonCommand("  Maria Silva  ", $"  {Documento}  "),
+                new CreatePersonCommand("  Maria Silva  ", Documento),
                 CancellationToken.None);
 
             response.Name.Should().Be("Maria Silva");
-            response.Document.Should().Be(Documento);
+        }
+
+        [Fact]
+        public async Task Nao_deve_aparar_o_documento()
+        {
+            // Aparar aqui era o que gravava dez dígitos a partir de onze caracteres: o validator
+            // contava o espaço e o handler o descartava. Agora o formato é conferido antes, e
+            // o que chega ao handler é exatamente o que vai para o banco.
+            _personRepository.ExistsByDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(false);
+
+            var response = await _handler.Handle(
+                new CreatePersonCommand("Maria Silva", " 1234567890"),
+                CancellationToken.None);
+
+            response.Document.Should().Be(" 1234567890");
         }
 
         [Fact]

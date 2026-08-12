@@ -416,8 +416,8 @@ que ele descreve. Para liberar a exclusão, remova antes os registros que a usam
 
 #### `POST /api/people`
 
-Cadastra uma pessoa. O campo `document` é o **CPF**, sem máscara: exatamente 11 caracteres,
-e único entre as pessoas. As mensagens de erro chamam o campo de CPF, que é como a interface
+Cadastra uma pessoa. O campo `document` é o **CPF**, sem máscara: exatamente 11 dígitos
+(`^[0-9]{11}$`), e único entre as pessoas. As mensagens de erro chamam o campo de CPF, que é como a interface
 o rotula — a propriedade continua `document`, e é essa a chave no dicionário de `errors`.
 
 ```json
@@ -427,7 +427,7 @@ o rotula — a propriedade continua `document`, e é essa a chave no dicionário
 | HTTP | Quando |
 | --- | --- |
 | 201 | Pessoa cadastrada; `Location` aponta para o recurso |
-| 400 | Nome vazio ou acima de 200 caracteres; CPF fora dos 11 caracteres |
+| 400 | Nome vazio ou acima de 200 caracteres; CPF que não seja 11 dígitos |
 | 409 | Já existe pessoa com esse CPF |
 
 ```json

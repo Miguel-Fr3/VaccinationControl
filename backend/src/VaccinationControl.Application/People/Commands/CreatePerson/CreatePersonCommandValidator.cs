@@ -16,8 +16,7 @@ namespace VaccinationControl.Application.People.Commands.CreatePerson
             // caracteres são um CPF, e é assim que a interface chama o campo.
             RuleFor(command => command.Document)
                 .NotEmpty()
-                .MinimumLength(11)
-                .MaximumLength(11)
+                .Matches("^[0-9]{11}$")
                 .WithName("CPF");
         }
     }
