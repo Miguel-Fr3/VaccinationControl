@@ -100,4 +100,18 @@ describe('App', () => {
     expect(await screen.findByText('maria@teste.local')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument();
   });
+
+  it('marca na navegacao a tela em que se esta', async () => {
+    serveSession();
+
+    renderApp('/vacinas');
+
+    // `aria-current="page"` é o que o realce visual usa como gancho e o que o leitor de tela
+    // anuncia: um só atributo cobre os dois.
+    expect(await screen.findByRole('link', { name: 'Vacinas' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('link', { name: 'Pessoas' })).not.toHaveAttribute('aria-current');
+  });
 });
