@@ -33,7 +33,7 @@ namespace VaccinationControl.IntegrationTests
 
         private static async Task<Guid> CadastrarPessoaAsync(HttpClient client)
         {
-            var documento = Random.Shared.NextInt64(10000000000, 99999999999).ToString();
+            var documento = CpfGenerator.Next();
 
             var resposta = await client.PostAsJsonAsync(
                 "/api/people",
@@ -173,7 +173,7 @@ namespace VaccinationControl.IntegrationTests
         public async Task Documento_duplicado_deve_responder_409()
         {
             var client = await factory.AutenticadoAsync();
-            var documento = Random.Shared.NextInt64(10000000000, 99999999999).ToString();
+            var documento = CpfGenerator.Next();
 
             await client.PostAsJsonAsync("/api/people", new { name = "Maria", document = documento });
             var segunda = await client.PostAsJsonAsync(

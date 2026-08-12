@@ -6,7 +6,9 @@ namespace VaccinationControl.UnitTests.People.Commands.CreatePerson
 {
     public class CreatePersonCommandValidatorTests
     {
-        private const string DocumentoValido = "12345678901";
+        // CPF com dígitos verificadores corretos: desde que eles são conferidos, um número
+        // qualquer de onze dígitos não serve mais de exemplo válido.
+        private const string DocumentoValido = "11144477735";
 
         private readonly CreatePersonCommandValidator _validator = new();
 
@@ -43,6 +45,27 @@ namespace VaccinationControl.UnitTests.People.Commands.CreatePerson
             result.ShouldHaveValidationErrorFor(command => command.Document);
         }
 
+        [Theory]
+        [InlineData("11144477736")]    // último dígito verificador trocado
+        [InlineData("12345678901")]    // onze dígitos em sequência, sem conta que feche
+        [InlineData("11111111111")]    // dígito repetido: fecha a aritmética e não é CPF
+        public void Deve_recusar_documento_com_digito_verificador_errado(string document)
+        {
+            var result = _validator.TestValidate(new CreatePersonCommand("Maria Silva", document));
+
+            result.ShouldHaveValidationErrorFor(command => command.Document);
+        }
+
+        [Fact]
+        public void Deve_acusar_uma_falha_por_vez_no_documento()
+        {
+            // Sem o Cascade.Stop, o campo vazio acusaria as três regras juntas e o formulário
+            // mostraria "informe o CPF" ao lado de "CPF não é válido".
+            var result = _validator.TestValidate(new CreatePersonCommand("Maria Silva", ""));
+
+            result.Errors.Should().ContainSingle();
+        }
+
         [Fact]
         public void Mensagem_do_documento_deve_chamar_o_campo_de_CPF()
         {
@@ -60,7 +83,7 @@ namespace VaccinationControl.UnitTests.People.Commands.CreatePerson
         }
 
         [Fact]
-        public void Deve_aceitar_documento_com_exatamente_11_caracteres()
+        public void Deve_aceitar_cpf_valido()
         {
             var command = new CreatePersonCommand("Maria Silva", DocumentoValido);
 

@@ -9,7 +9,7 @@ namespace VaccinationControl.UnitTests.People.Commands.CreatePerson
 {
     public class CreatePersonCommandHandlerTests
     {
-        private const string Documento = "12345678901";
+        private const string Documento = "11144477735";
 
         private readonly IPersonRepository _personRepository = Substitute.For<IPersonRepository>();
         private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();

@@ -25,7 +25,7 @@ namespace VaccinationControl.UnitTests.Vaccinations.Queries.GetVaccinationCard
             _handler = new GetVaccinationCardQueryHandler(_personRepository, _recordRepository);
 
             _personRepository.GetByIdAsync(PersonId, Arg.Any<CancellationToken>())
-                .Returns(new Person { Id = PersonId, Name = "Maria Silva", Document = "12345678901" });
+                .Returns(new Person { Id = PersonId, Name = "Maria Silva", Document = "11144477735" });
         }
 
         private void DadosOsRegistros(params VaccinationRecord[] registros)

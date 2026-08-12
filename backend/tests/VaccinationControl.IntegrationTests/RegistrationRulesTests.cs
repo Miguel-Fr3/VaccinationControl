@@ -43,6 +43,35 @@ namespace VaccinationControl.IntegrationTests
             resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         }
 
+        [Theory]
+        [InlineData("11144477736")]   // dígito verificador trocado
+        [InlineData("12345678901")]   // onze dígitos que não fecham a conta
+        [InlineData("11111111111")]   // dígito repetido
+        public async Task CPF_com_digito_verificador_errado_deve_responder_400(string documento)
+        {
+            var client = await factory.AutenticadoAsync();
+
+            var resposta = await client.PostAsJsonAsync(
+                "/api/people",
+                new { name = "Maria Silva", document = documento });
+
+            resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+
+        [Fact]
+        public async Task CPF_valido_deve_ser_aceito()
+        {
+            // O contraponto dos casos acima: a regra recusa o que não fecha a conta e não
+            // atrapalha o cadastro legítimo.
+            var client = await factory.AutenticadoAsync();
+
+            var resposta = await client.PostAsJsonAsync(
+                "/api/people",
+                new { name = "Maria Silva", document = CpfGenerator.Next() });
+
+            resposta.StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+
         [Fact]
         public async Task CPF_com_espaco_nao_deve_ser_gravado_com_dez_digitos()
         {

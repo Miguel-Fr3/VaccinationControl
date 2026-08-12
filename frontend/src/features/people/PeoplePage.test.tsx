@@ -24,7 +24,7 @@ function pagedResult(
 }
 
 const maria = { name: 'Maria Silva', document: '12345678901' };
-const joao = { name: 'João Souza', document: '98765432100' };
+const joao = { name: 'João Souza', document: '52998224725' };
 
 describe('PeoplePage', () => {
   it('lista nome e CPF mascarado', async () => {
@@ -144,7 +144,7 @@ describe('PeoplePage', () => {
 
     const dialog = screen.getByRole('dialog');
     await userEvent.type(within(dialog).getByLabelText(/nome/i), 'João Souza');
-    await userEvent.type(within(dialog).getByLabelText(/cpf/i), '98765432100');
+    await userEvent.type(within(dialog).getByLabelText(/cpf/i), '52998224725');
     await userEvent.click(within(dialog).getByRole('button', { name: /salvar/i }));
 
     expect(await screen.findByText('João Souza')).toBeInTheDocument();

@@ -36,7 +36,7 @@ namespace VaccinationControl.UnitTests.Vaccinations.Commands.RegisterVaccination
 
             // Por padrão pessoa e vacina existem; cada teste sobrescreve o que precisar.
             _personRepository.GetByIdAsync(PersonId, Arg.Any<CancellationToken>())
-                .Returns(new Person { Id = PersonId, Name = "Maria Silva", Document = "12345678901" });
+                .Returns(new Person { Id = PersonId, Name = "Maria Silva", Document = "11144477735" });
 
             _vaccineRepository.GetByIdAsync(VaccineId, Arg.Any<CancellationToken>())
                 .Returns(new Vaccine { Id = VaccineId, Name = "Hepatite B" });
