@@ -13,7 +13,7 @@ import { Controller, useForm } from 'react-hook-form';
 
 import { applyValidationErrors, errorMessage } from '../../api/problemDetails';
 import type { CreatePersonRequest } from '../../api/types';
-import { formatCpf, stripCpf } from '../../format/cpf';
+import { formatCpf, isValidCpf, stripCpf } from '../../format/cpf';
 import { useCreatePerson } from './usePeople';
 
 type PersonDialogProps = {
@@ -78,6 +78,12 @@ export function PersonDialog({ open, onClose }: PersonDialogProps) {
             <Controller
               name="document"
               control={control}
+              // A conta dos verificadores roda aqui só para avisar antes do envio; quem
+              // recusa de fato continua sendo o validator da API, que devolve a mesma regra.
+              rules={{
+                validate: value =>
+                  isValidCpf(value) || 'Informe um CPF válido, com onze dígitos.',
+              }}
               render={({ field }) => (
                 <TextField
                   label="CPF"

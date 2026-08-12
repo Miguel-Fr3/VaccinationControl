@@ -97,7 +97,7 @@ namespace VaccinationControl.IntegrationTests
         public async Task Pessoas_devem_ser_buscaveis_por_documento()
         {
             var client = await factory.AutenticadoAsync();
-            var documento = Random.Shared.NextInt64(10000000000, 99999999999).ToString();
+            var documento = CpfGenerator.Next();
 
             await client.PostAsJsonAsync(
                 "/api/people",

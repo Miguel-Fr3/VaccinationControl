@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatCpf, searchTerm, stripCpf } from './cpf';
+import { formatCpf, isValidCpf, searchTerm, stripCpf } from './cpf';
 
 describe('stripCpf', () => {
   it('deixa so os digitos', () => {
@@ -32,6 +32,38 @@ describe('formatCpf', () => {
 
   it('nao duplica separador em valor ja mascarado', () => {
     expect(formatCpf('123.456.789-01')).toBe('123.456.789-01');
+  });
+});
+
+describe('isValidCpf', () => {
+  it('aceita CPF com os verificadores corretos', () => {
+    expect(isValidCpf('11144477735')).toBe(true);
+    expect(isValidCpf('52998224725')).toBe(true);
+  });
+
+  it('aceita o CPF mascarado, como sai do campo', () => {
+    expect(isValidCpf('111.444.777-35')).toBe(true);
+  });
+
+  it('aceita CPF que comeca com zero', () => {
+    // O primeiro dígito não pode se perder no caminho.
+    expect(isValidCpf('01234567890')).toBe(true);
+  });
+
+  it('recusa verificador trocado', () => {
+    expect(isValidCpf('11144477736')).toBe(false);
+    expect(isValidCpf('12345678901')).toBe(false);
+  });
+
+  it('recusa sequencia de digito repetido', () => {
+    // Ela fecha a aritmética e não é CPF de ninguém.
+    expect(isValidCpf('11111111111')).toBe(false);
+    expect(isValidCpf('00000000000')).toBe(false);
+  });
+
+  it('recusa o que nao tem onze digitos', () => {
+    expect(isValidCpf('')).toBe(false);
+    expect(isValidCpf('1114447773')).toBe(false);
   });
 });
 

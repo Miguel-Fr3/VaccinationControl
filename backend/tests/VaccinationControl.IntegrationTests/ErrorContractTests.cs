@@ -143,7 +143,7 @@ namespace VaccinationControl.IntegrationTests
 
         private static async Task<Guid> CadastrarPessoaAsync(HttpClient client)
         {
-            var documento = Random.Shared.NextInt64(10000000000, 99999999999).ToString();
+            var documento = CpfGenerator.Next();
 
             var resposta = await client.PostAsJsonAsync(
                 "/api/people",
