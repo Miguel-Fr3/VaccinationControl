@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 
 import { server } from './test/server';
@@ -99,6 +100,19 @@ describe('App', () => {
 
     expect(await screen.findByText('maria@teste.local')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument();
+  });
+
+  it('encerra a sessao mesmo quando o logout falha', async () => {
+    serveSession();
+    server.use(http.post('*/api/auth/logout', () => HttpResponse.error()));
+
+    renderApp('/pessoas');
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Sair' }));
+
+    // O clique em Sair é uma decisão do usuário, não um pedido de tentativa: se a chamada
+    // falhar por rede, ficar na aplicação com a sessão de pé é o pior desfecho possível.
+    expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument();
   });
 
   it('marca na navegacao a tela em que se esta', async () => {

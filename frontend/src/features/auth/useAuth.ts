@@ -42,7 +42,11 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: () => api.post('/api/auth/logout'),
-    onSuccess: () => {
+    // `onSettled`, e não `onSuccess`: se a chamada falhar por rede, o usuário clicou em sair e
+    // continuaria na aplicação, sem sessão encerrada e sem aviso nenhum. Encerrar do lado do
+    // cliente é o que está ao alcance daqui — o cookie pode sobreviver, mas ele é `HttpOnly` e
+    // a próxima requisição que o servidor recusar derruba a sessão pelo tratador de 401.
+    onSettled: () => {
       setUser(null);
 
       // Descarta o cache das outras telas, mas nunca o da sessão: remover uma query que
