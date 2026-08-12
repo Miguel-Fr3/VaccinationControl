@@ -6,11 +6,28 @@ using VaccinationControl.IntegrationTests.Support;
 namespace VaccinationControl.IntegrationTests
 {
     /// <summary>
-    /// Regras de cadastro que só existem inteiras quando a requisição atravessa o banco — o que
-    /// entra pela API é o que fica gravado, e é isso que estes testes conferem.
+    /// Regras de cadastro que só existem inteiras quando a requisição atravessa o banco: o que
+    /// entra pela API é o que fica gravado, e a unicidade do nome da vacina depende da collation
+    /// da coluna — nenhum teste unitário alcança isso, porque lá o repositório é um dublê que
+    /// compara em memória.
     /// </summary>
     public class RegistrationRulesTests(ApiFactory factory) : IClassFixture<ApiFactory>
     {
+        [Fact]
+        public async Task Nome_de_vacina_repetido_em_outra_caixa_deve_responder_409()
+        {
+            // Com a collation BINARY do SQLite, "Tetano" e "tetano" eram dois registros
+            // legítimos: nem a checagem do handler nem o índice único enxergavam a repetição.
+            var client = await factory.AutenticadoAsync();
+
+            var primeira = await client.PostAsJsonAsync("/api/vaccines", new { name = "Tetano" });
+            primeira.StatusCode.Should().Be(HttpStatusCode.Created);
+
+            var repetida = await client.PostAsJsonAsync("/api/vaccines", new { name = "tetano" });
+
+            repetida.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        }
+
         [Theory]
         [InlineData("abcdefghijk")]
         [InlineData("123.456.789")]

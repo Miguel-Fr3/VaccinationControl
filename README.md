@@ -343,7 +343,7 @@ Cadastra uma vacina.
 | --- | --- |
 | 201 | Vacina cadastrada; `Location` aponta para o recurso |
 | 400 | Nome vazio ou com mais de 200 caracteres |
-| 409 | Já existe vacina com esse nome |
+| 409 | Já existe vacina com esse nome, em qualquer caixa (`Gripe` e `gripe` são a mesma) |
 
 ```json
 { "id": "3df1340d-3381-4021-a782-18679e777c50", "name": "Hepatite B" }
