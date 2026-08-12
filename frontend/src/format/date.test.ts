@@ -17,19 +17,34 @@ describe('formatIsoDate', () => {
 describe('today', () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
-  it('usa a data local, e nao a UTC', () => {
-    // 23h de 10/01 em Brasília já é 11/01 em UTC. O seletor precisa parar no 10.
+  /** Fixa o fuso do processo e o instante, para o resultado não depender da máquina. */
+  function freeze(timeZone: string, utcInstant: Date) {
+    vi.stubEnv('TZ', timeZone);
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2024, 0, 10, 23, 30));
+    vi.setSystemTime(utcInstant);
+  }
+
+  it('a oeste de Greenwich fica na data local, que ainda nao virou', () => {
+    // 22h30 de 10/01 em Brasília já é 11/01 em UTC. O seletor precisa parar no 10: é o dia
+    // que o usuário está vivendo, e a API aceita qualquer coisa até o 11.
+    freeze('America/Sao_Paulo', new Date(Date.UTC(2024, 0, 11, 1, 30)));
+
+    expect(today()).toBe('2024-01-10');
+  });
+
+  it('a leste de Greenwich para na data UTC, que e a referencia da API', () => {
+    // 01h de 11/01 em Riade ainda é 10/01 em UTC, e o validator do backend compara com
+    // `DateTime.UtcNow`: oferecer o 11 devolveria 400 num dia que já começou para o usuário.
+    freeze('Asia/Riyadh', new Date(Date.UTC(2024, 0, 10, 22, 0)));
 
     expect(today()).toBe('2024-01-10');
   });
 
   it('preenche mes e dia com zero a esquerda', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2024, 1, 5, 12, 0));
+    freeze('America/Sao_Paulo', new Date(Date.UTC(2024, 1, 5, 15, 0)));
 
     expect(today()).toBe('2024-02-05');
   });

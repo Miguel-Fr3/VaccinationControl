@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint';
 import { globalIgnores } from 'eslint/config';
 
 export default tseslint.config([
-  globalIgnores(['dist']),
+  // Os dois são saída de ferramenta, não código do projeto: o relatório de cobertura traz
+  // JS pronto (prettify, sorter) que o linter analisaria como se fosse nosso.
+  globalIgnores(['dist', 'coverage']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
