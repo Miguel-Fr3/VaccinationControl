@@ -46,6 +46,14 @@ namespace VaccinationControl.Infrastructure.Persistence.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        public Task<bool> ExistsByVaccineAsync(
+            Guid vaccineId,
+            CancellationToken cancellationToken = default)
+        {
+            return context.VaccinationRecords
+                .AnyAsync(record => record.VaccineId == vaccineId, cancellationToken);
+        }
+
         public void Add(VaccinationRecord vaccinationRecord)
         {
             context.VaccinationRecords.Add(vaccinationRecord);

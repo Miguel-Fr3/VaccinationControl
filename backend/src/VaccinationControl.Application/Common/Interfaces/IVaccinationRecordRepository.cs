@@ -28,6 +28,12 @@ namespace VaccinationControl.Application.Common.Interfaces
             Guid personId,
             CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Informa se a vacina já foi aplicada a alguém. Uma vacina em uso não sai do
+        /// catálogo: o registro da dose ficaria sem a vacina que ele descreve.
+        /// </summary>
+        Task<bool> ExistsByVaccineAsync(Guid vaccineId, CancellationToken cancellationToken = default);
+
         void Add(VaccinationRecord vaccinationRecord);
 
         void Remove(VaccinationRecord vaccinationRecord);

@@ -13,6 +13,7 @@ namespace VaccinationControl.Infrastructure.Persistence
         private const int ConstraintErrorCode = 19;
         private const int UniqueViolationCode = 2067;
         private const int PrimaryKeyViolationCode = 1555;
+        private const int ForeignKeyViolationCode = 787;
 
         public DbSet<Person> People => Set<Person>();
         public DbSet<Vaccine> Vaccines => Set<Vaccine>();
@@ -20,9 +21,10 @@ namespace VaccinationControl.Infrastructure.Persistence
         public DbSet<User> Users => Set<User>();
 
         /// <summary>
-        /// Os handlers verificam duplicidade antes de gravar, mas entre a verificação e o
-        /// commit outra requisição pode inserir o mesmo dado. Sem esta tradução, o índice
-        /// único do banco derrubaria a requisição com 500 em vez do 409 correto.
+        /// Os handlers verificam duplicidade e uso antes de gravar, mas entre a verificação e
+        /// o commit outra requisição pode inserir o mesmo dado ou passar a usar o registro que
+        /// está sendo removido. Sem esta tradução, a constraint do banco derrubaria a
+        /// requisição com 500 em vez do 409 correto.
         /// </summary>
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -36,6 +38,12 @@ namespace VaccinationControl.Infrastructure.Persistence
             {
                 throw new ConflictException(
                     "A operação conflita com um registro já existente.",
+                    exception);
+            }
+            catch (DbUpdateException exception) when (IsForeignKeyViolation(exception))
+            {
+                throw new ConflictException(
+                    "A operação conflita com outro registro que depende deste.",
                     exception);
             }
         }
@@ -76,6 +84,13 @@ namespace VaccinationControl.Infrastructure.Persistence
                 && sqliteException.SqliteErrorCode == ConstraintErrorCode
                 && (sqliteException.SqliteExtendedErrorCode == UniqueViolationCode
                     || sqliteException.SqliteExtendedErrorCode == PrimaryKeyViolationCode);
+        }
+
+        private static bool IsForeignKeyViolation(DbUpdateException exception)
+        {
+            return exception.InnerException is SqliteException sqliteException
+                && sqliteException.SqliteErrorCode == ConstraintErrorCode
+                && sqliteException.SqliteExtendedErrorCode == ForeignKeyViolationCode;
         }
     }
 }

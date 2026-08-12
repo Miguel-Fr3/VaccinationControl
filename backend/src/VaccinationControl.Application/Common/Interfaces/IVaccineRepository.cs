@@ -10,6 +10,8 @@ namespace VaccinationControl.Application.Common.Interfaces
 
         void Add(Vaccine vaccine);
 
+        void Remove(Vaccine vaccine);
+
         /// <summary>
         /// Busca vacinas por trecho do nome e devolve a página pedida junto do total de
         /// registros que atendem ao filtro. <paramref name="search"/>, <paramref name="skip"/>

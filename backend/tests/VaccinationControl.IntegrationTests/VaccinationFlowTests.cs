@@ -232,6 +232,39 @@ namespace VaccinationControl.IntegrationTests
         }
 
         [Fact]
+        public async Task Remover_vacina_sem_dose_deve_tira_la_do_catalogo()
+        {
+            var client = await factory.AutenticadoAsync();
+            var vaccineId = await CadastrarVacinaAsync(client);
+
+            var remocao = await client.DeleteAsync($"/api/vaccines/{vaccineId}");
+            remocao.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            var consulta = await client.GetAsync($"/api/vaccines/{vaccineId}");
+            consulta.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        }
+
+        [Fact]
+        public async Task Remover_vacina_com_dose_registrada_deve_responder_409()
+        {
+            var client = await factory.AutenticadoAsync();
+            var vaccineId = await CadastrarVacinaAsync(client);
+            var personId = await CadastrarPessoaAsync(client);
+
+            await RegistrarDoseAsync(client, personId, vaccineId, 1);
+
+            var remocao = await client.DeleteAsync($"/api/vaccines/{vaccineId}");
+            remocao.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+            // O histórico da pessoa não pode ter sido tocado pela tentativa.
+            var cartao = await client.GetFromJsonAsync<CartaoResponse>(
+                $"/api/people/{personId}/vaccination-card",
+                ApiClient.Json);
+
+            cartao!.Vaccines.Should().ContainSingle();
+        }
+
+        [Fact]
         public async Task Registro_de_outra_pessoa_deve_responder_404()
         {
             var client = await factory.AutenticadoAsync();

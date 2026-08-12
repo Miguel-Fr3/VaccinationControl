@@ -354,6 +354,19 @@ A resposta usa sempre o mesmo envelope, com ou sem paginação. Quando não há 
 | 200 | Consulta realizada |
 | 400 | `page` menor que 1, `pageSize` fora de 1–100 ou `search` acima de 200 caracteres |
 
+#### `DELETE /api/vaccines/{id}`
+
+Remove a vacina do catálogo. **Não há cascata aqui**: uma vacina com dose registrada não é
+removida, porque o registro é o histórico de vacinação de alguém e não pode perder a vacina
+que ele descreve. Para liberar a exclusão, remova antes os registros que a usam.
+
+| HTTP | Quando |
+| --- | --- |
+| 204 | Vacina removida; sem corpo na resposta |
+| 400 | Identificador vazio (`00000000-...`) |
+| 404 | Não existe vacina com esse identificador |
+| 409 | A vacina tem doses registradas |
+
 ### Pessoas
 
 #### `POST /api/people`
@@ -659,6 +672,9 @@ curl "http://localhost:5201/api/vaccines?page=2&pageSize=3"
 
 # busca e paginação combinadas
 curl "http://localhost:5201/api/vaccines?search=hepat&pageSize=1"
+
+# remover do catálogo; 409 se a vacina já tiver dose registrada
+curl -X DELETE http://localhost:5201/api/vaccines/3df1340d-3381-4021-a782-18679e777c50
 ```
 
 ```bash
