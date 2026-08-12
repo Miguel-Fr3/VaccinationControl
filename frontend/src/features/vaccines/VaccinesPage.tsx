@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  IconButton,
   Paper,
   Stack,
   Table,
@@ -14,17 +15,22 @@ import {
   TablePagination,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 
 import { errorMessage } from '../../api/problemDetails';
+import type { Vaccine } from '../../api/types';
 import { useListQuery } from '../../hooks/useListQuery';
+import { DeleteVaccineDialog } from './DeleteVaccineDialog';
 import { VaccineDialog } from './VaccineDialog';
 import { useVaccines } from './useVaccines';
 
 export default function VaccinesPage() {
   const list = useListQuery();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [vaccineToDelete, setVaccineToDelete] = useState<Vaccine | null>(null);
 
   const { data, isPending, isFetching, isError, error } = useVaccines(list.query);
 
@@ -85,6 +91,7 @@ export default function VaccinesPage() {
               <TableHead>
                 <TableRow>
                   <TableCell>Nome</TableCell>
+                  <TableCell align="right">Ações</TableCell>
                 </TableRow>
               </TableHead>
 
@@ -92,6 +99,19 @@ export default function VaccinesPage() {
                 {data.items.map(vaccine => (
                   <TableRow key={vaccine.id} hover>
                     <TableCell>{vaccine.name}</TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Excluir">
+                        <IconButton
+                          color="error"
+                          aria-label={`Excluir ${vaccine.name}`}
+                          onClick={() => {
+                            setVaccineToDelete(vaccine);
+                          }}
+                        >
+                          <DeleteOutlinedIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -121,6 +141,15 @@ export default function VaccinesPage() {
           setDialogOpen(false);
         }}
       />
+
+      {vaccineToDelete && (
+        <DeleteVaccineDialog
+          vaccine={vaccineToDelete}
+          onClose={() => {
+            setVaccineToDelete(null);
+          }}
+        />
+      )}
     </Stack>
   );
 }

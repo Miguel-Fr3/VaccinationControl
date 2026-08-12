@@ -880,7 +880,7 @@ sem verificá-las, então sem essa etapa um erro de tipo passaria direto para o 
 | `/registrar` | Criar conta | público |
 | `/pessoas` | Lista de pessoas, com cadastro e exclusão | sessão |
 | `/pessoas/:personId/cartao` | Cartão de vacinação, com registro e remoção de dose | sessão |
-| `/vacinas` | Catálogo de vacinas, com busca, paginação e cadastro | sessão |
+| `/vacinas` | Catálogo de vacinas, com busca, paginação, cadastro e exclusão | sessão |
 
 A raiz redireciona para `/pessoas`. As rotas com sessão ficam atrás do `RequireSession`, que
 consulta `GET /api/auth/me` na montagem — sem isso, um recarregamento de página piscaria a
@@ -1053,7 +1053,8 @@ para a máquina de quem roda a suíte.
 | Arquivo | O que cobre |
 | --- | --- |
 | `App.test.tsx` | registro das rotas, redirecionamentos e o desvio para o login sem sessão |
-| `VaccinesPage` · `VaccineDialog` | busca, paginação de servidor, estados vazio e de erro, cadastro |
+| `VaccinesPage` · `VaccineDialog` | busca, paginação de servidor, estados vazio e de erro, cadastro, exclusão |
+| `DeleteVaccineDialog` | confirmação e o 409 da vacina em uso chegando à tela |
 | `PeoplePage` · `PersonDialog` | máscara de CPF, envio sem máscara, busca por nome ou CPF |
 | `DeletePersonDialog` | aviso de cascata com a contagem de registros que serão perdidos |
 | `VaccinationCardPage` · `VaccinationDialog` | agrupamento por vacina, sugestões de dose, remoção |
